@@ -162,18 +162,20 @@
             background-color: #17a2b8; border-radius: 5px; margin-bottom: 0;
         }
 
-        /* NUOVA POSIZIONE ALERT */
+        /* ========= MODIFICA 3: POSIZIONE ALERT SPOSTATA IN ALTO A SINISTRA ========= */
         #alerts-sidebar {
             position: fixed;
             left: 20px;
-            top: 50%;
-            transform: translateY(-50%);
+            top: 20px; /* Modificato da 50% */
+            /* transform: translateY(-50%); -- Rimosso per allineare in alto */
             z-index: 1001;
             display: flex;
             flex-direction: column;
             gap: 20px;
             width: 350px;
         }
+        /* ======================= FINE MODIFICA 3 ======================= */
+
         #alerts-sidebar .alert-box {
             width: 100%;
             max-width: 100%;
@@ -310,7 +312,10 @@
         #auth-error { color: #dc3545; text-align: center; margin-top: 10px; font-weight: bold; }
         #user-info { font-weight: bold; color: #333; background-color: #e9ecef; padding: 8px 12px; border-radius: 5px; }
         
-        /* NUOVI STILI PER COLORI FISSI E TESTO IN RILIEVO */
+        /* ========= MODIFICA 1: CONFERMA REGOLA PER COLORE FISSO ========= */
+        /* Questa regola assicura che i titoli h2 e h3 dentro gli elementi
+           con classe 'fixed-color-scheme' abbiano sempre un colore antracite,
+           indipendentemente dal tema della compagnia selezionata. */
         .fixed-color-scheme h2,
         .fixed-color-scheme h3,
         .fixed-color-scheme th {
@@ -319,16 +324,92 @@
         .fixed-color-scheme h2 {
              text-shadow: 1px 1px 3px rgba(0,0,0,0.3), -1px -1px 1px rgba(255,255,255,0.7); /* Effetto rilievo e ombra */
         }
+        /* ====================== FINE MODIFICA 1 ====================== */
+
+        /* ========= MODIFICA 2: NUOVI STILI PER LA STAMPA PERSONALIZZATA ========= */
+        #print-layout {
+            display: none;
+        }
+
+        @page {
+            size: A4 landscape;
+            margin: 20mm;
+        }
 
         @media print {
-            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .app-header, #form-movimento-fieldset, #box-conteggio-cassa-fieldset, #box-verifica-finale, .button-edit, .button-delete, .provvigione-editabile:hover, #auth-container, #company-selector-modal {
+            body { 
+                -webkit-print-color-adjust: exact; 
+                print-color-adjust: exact; 
+                background-color: #fff;
+                color: #000;
+                margin: 0;
+                padding: 0;
+            }
+
+            body > *:not(#print-layout) {
                 display: none !important;
             }
-            .grid-container { grid-template-columns: 1fr; }
-            h1, h2, h3 { color: #333 !important; }
-            .box, .container { box-shadow: none; border: 1px solid #ccc; }
+            
+            #print-layout {
+                display: block !important;
+            }
+
+            .print-page {
+                page-break-after: always;
+                break-after: page;
+            }
+            .print-page:last-child {
+                page-break-after: avoid;
+                break-after: avoid;
+            }
+            
+            .print-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 2px solid #333;
+                margin-bottom: 20px;
+                padding-bottom: 10px;
+            }
+            .print-header h1, .print-header h2 {
+                font-size: 1.4rem;
+                margin: 0;
+                color: #000 !important;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            }
+
+            .conteggio-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 40px;
+                margin-bottom: 20px;
+            }
+            .conteggio-colonna h3 { margin-top: 0; }
+            
+            .box, .container {
+                box-shadow: none !important;
+                border: 1px solid #ccc !important;
+                background-image: none !important;
+                padding: 15px;
+            }
+            
+            h1, h2, h3, th, strong {
+                color: #000 !important;
+                text-shadow: none !important;
+            }
+            .riepilogo-totali, .risultato-verifica {
+                border-left-width: 3px;
+                font-size: 1.1rem;
+            }
+            table {
+                font-size: 0.8rem;
+                width: 100%;
+            }
+            th, td {
+                padding: 6px;
+            }
         }
+        /* ========================= FINE MODIFICA 2 ========================= */
     </style>
 </head>
 <body id="app-body">
@@ -655,9 +736,8 @@
             <div class="risultato-verifica" id="risultatoVerifica">In attesa di verifica...</div>
         </div>
     </div>
-
-    <div id="print-layout" style="display: none;">
-        </div>
+    
+    <div id="print-layout"></div>
 
 <script>
     // ========= NUOVA CONFIGURAZIONE FIREBASE =========
@@ -870,7 +950,9 @@
         stato.compagniaSelezionata = null;
         stato.datiGiornoCorrente = null;
         stato.movimentiVistaMensile = [];
-        document.body.className = ''; // Rimuove la classe del tema
+        // ========= MODIFICA 1 (VERIFICA): QUESTA RIGA RESETTA IL TEMA =========
+        document.body.className = ''; // Rimuove la classe del tema per ripristinare i colori di default
+        // =======================================================================
     }
 
     function caricaGiornale(data) {
@@ -1378,7 +1460,6 @@
         
         let query = db.collection(configTabellaCorrente.dataSource);
 
-        // Logica di filtraggio esplicita: solo alcune tabelle sono pre-filtrate per compagnia.
         if (tipo === 'bonifici_hdi_arag' || tipo === 'pos_hdi_arag') {
             query = query.where('compagnia', 'in', ['HDI', 'ARAG']);
         } else if (tipo === 'bonifici_allianz') {
@@ -1386,7 +1467,6 @@
         } else if (tipo === 'bonifici_vittoria') {
             query = query.where('compagnia', '==', 'Vittoria');
         }
-        // Nessun 'else': se il tipo non corrisponde, la query rimane non filtrata (globale).
         
         unsubscribeGenericTable = query.onSnapshot(snapshot => {
             datiTabellaCorrente = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -1590,47 +1670,70 @@
         return dataPrec;
     }
     
+    // ========= MODIFICA 2: NUOVA FUNZIONE DI STAMPA PERSONALIZZATA =========
     function stampaPersonalizzata() {
-        const printWindow = window.open('', '_blank');
-        const appContainer = document.getElementById('main-container');
+        const printLayout = document.getElementById('print-layout');
+        const mainTitle = document.getElementById('main-title').textContent;
+        const dateValue = new Date(document.getElementById('date-selector').value).toLocaleDateString('it-IT');
+        const isSimplified = ['ARAG', 'Helvetia'].includes(stato.compagniaSelezionata);
+        let printHTML = '';
 
-        // Clona il container per non modificare la pagina originale
-        const contentToPrint = appContainer.cloneNode(true);
-
-        // Rimuove elementi non necessari dalla copia
-        contentToPrint.querySelectorAll('#form-movimento-fieldset, #box-conteggio-cassa-fieldset, #box-verifica-finale, .button-edit, .button-delete, .app-header, .provvigione-editabile').forEach(el => el.remove());
+        // --- PAGINA 1: Riepilogo Movimenti ---
+        const riepilogoMovimentiBox = document.getElementById('box-riepilogo-movimenti').cloneNode(true);
+        // Rimuove la colonna Azioni dalla tabella
+        riepilogoMovimentiBox.querySelectorAll('th:last-child, td:last-child').forEach(el => el.remove());
         
-        const originalTitle = document.title;
-        const stylesheets = Array.from(document.styleSheets)
-                               .map(sheet => sheet.href ? `<link rel="stylesheet" href="${sheet.href}">` : `<style>${Array.from(sheet.cssRules).map(rule => rule.cssText).join('')}</style>`)
-                               .join('\n');
+        // Per la vista semplificata, nasconde il box della cassa teorica
+        if (isSimplified) {
+            const cassaTeoricaBox = riepilogoMovimentiBox.querySelector('.riepilogo-totali.col-cassa-teorica');
+            if (cassaTeoricaBox) cassaTeoricaBox.style.display = 'none';
+        }
         
-        printWindow.document.write(`
-            <html>
-                <head>
-                    <title>Stampa - ${document.getElementById('main-title').textContent} - ${document.getElementById('date-selector').value}</title>
-                    ${stylesheets}
-                    <style>
-                        body { background-color: #fff; }
-                        .container { box-shadow: none; padding: 0; }
-                        h1, h2, h3 { color: #000 !important; text-shadow: none !important; }
-                        .box { border: 1px solid #ccc; box-shadow: none; }
-                        .grid-container { grid-template-columns: 1fr; }
-                    </style>
-                </head>
-                <body>
-                    ${contentToPrint.innerHTML}
-                </body>
-            </html>
-        `);
+        printHTML += `
+            <div class="print-page">
+                <div class="print-header">
+                    <h1>${mainTitle}</h1>
+                    <h2>${dateValue}</h2>
+                </div>
+                ${riepilogoMovimentiBox.outerHTML}
+            </div>`;
 
-        printWindow.document.close();
-        printWindow.focus();
+        // --- PAGINA 2: Conteggio e Verifica (solo per compagnie standard) ---
+        if (!isSimplified) {
+            const verificaFinaleBox = document.getElementById('box-verifica-finale').cloneNode(true);
+            // Rimuove il pulsante di verifica dalla copia
+            verificaFinaleBox.querySelector('button')?.remove();
+            
+            const conteggioSoldiHTML = (document.getElementById('conteggioBanconote').outerHTML || '') + (document.getElementById('conteggioMonete').outerHTML || '');
+            const conteggioAssegniHTML = document.getElementById('box-conteggio-assegni').outerHTML || '';
+
+            printHTML += `
+                <div class="print-page">
+                    <div class="print-header">
+                        <h1>Dettaglio Conteggio e Verifica</h1>
+                        <h2>${dateValue}</h2>
+                    </div>
+                    <div class="conteggio-grid">
+                        <div class="conteggio-colonna">
+                            <h2>Conteggio Denaro</h2>
+                            ${conteggioSoldiHTML}
+                        </div>
+                        <div class="conteggio-colonna">
+                             ${conteggioAssegniHTML}
+                        </div>
+                    </div>
+                    ${verificaFinaleBox.outerHTML}
+                </div>`;
+        }
+
+        printLayout.innerHTML = printHTML;
+
+        // Ritardo per assicurare il rendering prima della stampa
         setTimeout(() => {
-            printWindow.print();
-            printWindow.close();
-        }, 500);
+            window.print();
+        }, 250);
     }
+    // ====================== FINE MODIFICA 2 ======================
 
 
     function aggiornaCampiCondizionali() {
