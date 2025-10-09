@@ -209,8 +209,8 @@
         .generic-table td[contenteditable="true"]:hover { background-color: #fff3cd; cursor: text; }
         .generic-table input, .generic-table select { padding: 4px; font-size: 0.9rem; border-radius: 3px; border: 1px solid #ccc;}
         .generic-table input[type="checkbox"] { width: auto; transform: scale(1.2); }
-        .generic-table th.col-note, .generic-table td.col-note { width: 30%; }
-        .generic-table th.col-date, .generic-table td.col-date { min-width: 150px; }
+        .generic-table th.col-note, .generic-table td.col-note { width: 25%; }
+        .generic-table th.col-date, .generic-table td.col-date { min-width: 165px; }
         
         .riga-incassato { background-color: #d4edda !important; text-decoration: line-through; color: #555;}
         .riga-vecchio { background-color: #fff3cd; }
@@ -295,6 +295,16 @@
         #auth-container .form-toggle a { color: var(--primary-color); cursor: pointer; text-decoration: underline; }
         #auth-error { color: #dc3545; text-align: center; margin-top: 10px; font-weight: bold; }
         #user-info { font-weight: bold; color: #333; background-color: #e9ecef; padding: 8px 12px; border-radius: 5px; }
+        
+        /* NUOVI STILI PER COLORI FISSI E TESTO IN RILIEVO */
+        #company-selector-modal .modal-content h2,
+        #generic-modal-title {
+            color: #36454F !important; /* Colore antracite scuro */
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.3), -1px -1px 1px rgba(255,255,255,0.7); /* Effetto rilievo e ombra */
+        }
+        #generic-table th {
+            color: #36454F !important; /* Colore antracite scuro */
+        }
 
 
         @media print {
@@ -453,8 +463,8 @@
         <h1 id="main-title">Registro Cassa</h1>
         
         <div class="app-header">
-            <div class="header-group">
-                 <button onclick="tornaAllaSelezioneCompagnia()" class="button-secondary" title="Indietro"><i class="fa fa-arrow-left"></i> Indietro</button>
+             <div class="header-group">
+                 <button onclick="tornaAllaSelezioneCompagnia()" class="button-secondary" title="Torna alla selezione"><i class="fa fa-arrow-left"></i> Indietro</button>
             </div>
             <div class="header-group">
                 <label for="date-selector">Visualizza movimenti del:</label>
@@ -1056,7 +1066,6 @@
                             await rimuoviMovimentiSecondari(vecchioMovimento);
                             movimentiAggiornati[indexNelDocumento] = nuoviMovimenti[0];
                         } else {
-                            // Non dovrebbe succedere, ma per sicurezza...
                             movimentiAggiornati.push(nuoviMovimenti[0]);
                         }
                     } else {
@@ -1236,7 +1245,7 @@
                         for (const collName in datiImportati) {
                             if (Array.isArray(datiImportati[collName])) {
                                 datiImportati[collName].forEach(item => {
-                                    if(!item.id) { // Sanity check for missing IDs
+                                    if(!item.id) { 
                                         console.warn(`Oggetto senza ID nella collezione ${collName}, verrà saltato.`);
                                         return;
                                     }
@@ -1351,8 +1360,8 @@
         
         let query = db.collection(configTabellaCorrente.dataSource);
 
-        // Definisce quali collezioni sono pre-filtrate per compagnia.
-        // Tutto il resto è considerato globale e mostrerà tutti i documenti.
+        // Logica di filtraggio esplicita: solo alcune tabelle sono pre-filtrate per compagnia.
+        // Le altre (anticipi, abbuoni, etc.) sono sempre globali e non entrano in questi if.
         if (tipo === 'bonifici_hdi_arag' || tipo === 'pos_hdi_arag') {
             query = query.where('compagnia', 'in', ['HDI', 'ARAG']);
         } else if (tipo === 'bonifici_allianz') {
@@ -1360,9 +1369,7 @@
         } else if (tipo === 'bonifici_vittoria') {
             query = query.where('compagnia', '==', 'Vittoria');
         }
-        // Nessun 'else': se il tipo non corrisponde, la query rimane non filtrata,
-        // caricando correttamente tutti i documenti per le tabelle globali come 'anticipi' e 'abbuoni'.
-
+        
         unsubscribeGenericTable = query.onSnapshot(snapshot => {
             datiTabellaCorrente = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             applicaFiltriTabella();
