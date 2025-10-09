@@ -226,7 +226,7 @@
         .save-notification.error { background-color: #dc3545; }
         
         .app-header { 
-            display: flex; flex-wrap: wrap; justify-content: center; align-items: center; 
+            display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; 
             padding: 10px 20px; background-color: #f8f9fa; border-radius: 8px; margin-bottom: 20px; gap: 10px;
         }
         .app-header .header-group { display: flex; align-items: center; gap: 10px; }
@@ -454,6 +454,9 @@
         
         <div class="app-header">
             <div class="header-group">
+                 <button onclick="tornaAllaSelezioneCompagnia()" class="button-secondary" title="Indietro"><i class="fa fa-arrow-left"></i> Indietro</button>
+            </div>
+            <div class="header-group">
                 <label for="date-selector">Visualizza movimenti del:</label>
                 <input type="date" id="date-selector" onchange="caricaGiornale(this.valueAsDate)">
             </div>
@@ -462,7 +465,6 @@
                 <div id="status-indicator"></div>
                 <button onclick="stampaPersonalizzata()" class="button-secondary">Stampa</button>
                 <button id="btn-festa" class="button-secondary" style="display: none;">Festa/Chiusura</button>
-                <button onclick="tornaAllaSelezioneCompagnia()" class="button-secondary">Cambia Compagnia</button>
                 <button onclick="logoutUser()">Logout</button>
             </div>
          </div>
@@ -852,6 +854,7 @@
         const isSimplifiedView = stato.compagniaSelezionata === 'ARAG' || stato.compagniaSelezionata === 'Helvetia';
         
         if (isSimplifiedView) {
+            stato.movimentiVistaMensile = [];
             const selectedMonth = data.getMonth();
             const selectedYear = data.getFullYear();
             
@@ -877,6 +880,7 @@
                 }, error => console.error("Errore vista semplificata:", error));
 
         } else {
+            stato.datiGiornoCorrente = null;
             const dataKey = formatDate(data);
             const docId = `${stato.compagniaSelezionata}_${dataKey}`;
             
@@ -931,12 +935,13 @@
     }
     
     function creaNuovoGiorno(data, riporto) {
+        const dataKey = formatDate(data);
         return { 
             riportoIniziale: riporto, 
             movimenti: [], 
             conteggioFisico: {}, 
             cassaTeorica: riporto,
-            dataKey: formatDate(data),
+            dataKey: dataKey,
             compagnia: stato.compagniaSelezionata,
             anno: data.getFullYear(),
             mese: data.getMonth()
@@ -994,7 +999,6 @@
 
         const metodologia = document.getElementById('metodologia').value;
         let nuoviMovimenti = [];
-        let movimentiDaSincronizzare = [];
 
         if (metodologia === 'Versamento') {
             const versamentoContanti = parseFloat(document.getElementById('versamentoContanti').value) || 0;
@@ -1024,7 +1028,8 @@
                 numeroAssegno: document.getElementById('numeroAssegno').value,
             });
         }
-        movimentiDaSincronizzare = nuoviMovimenti;
+        
+        let movimentiDaSincronizzare = nuoviMovimenti;
 
         if(isSimplifiedView) {
             const targetDateKey = editingMovimentoData || formatDate(new Date());
@@ -1042,11 +1047,17 @@
 
                     if (editingIndex !== "") {
                         const movimentoOriginale = stato.movimentiVistaMensile[editingIndex];
+                        if (movimentoOriginale.dataMovimento !== targetDateKey) {
+                            throw new Error("La data del movimento non può essere cambiata.");
+                        }
                         const indexNelDocumento = movimentiAggiornati.findIndex(m => m.movimentoId === movimentoOriginale.movimentoId);
                         if(indexNelDocumento > -1) {
                             const vecchioMovimento = movimentiAggiornati[indexNelDocumento];
                             await rimuoviMovimentiSecondari(vecchioMovimento);
                             movimentiAggiornati[indexNelDocumento] = nuoviMovimenti[0];
+                        } else {
+                            // Non dovrebbe succedere, ma per sicurezza...
+                            movimentiAggiornati.push(nuoviMovimenti[0]);
                         }
                     } else {
                         movimentiAggiornati.push(...nuoviMovimenti);
@@ -1123,11 +1134,11 @@
         if (!confirm('Sei sicuro di voler eliminare questo movimento?')) return;
         
         const isSimplifiedView = stato.compagniaSelezionata === 'ARAG' || stato.compagniaSelezionata === 'Helvetia';
+        const movimentoCancellato = isSimplifiedView ? stato.movimentiVistaMensile[index] : stato.datiGiornoCorrente.movimenti[index];
+        
+        await rimuoviMovimentiSecondari(movimentoCancellato);
 
         if(isSimplifiedView) {
-            const movimentoCancellato = stato.movimentiVistaMensile[index];
-            await rimuoviMovimentiSecondari(movimentoCancellato);
-
             const docId = `${stato.compagniaSelezionata}_${movimentoCancellato.dataMovimento}`;
             const docRef = db.collection('giornaliCassa').doc(docId);
             const doc = await docRef.get();
@@ -1138,10 +1149,6 @@
             }
         } else {
             let movimentiAggiornati = [...(stato.datiGiornoCorrente.movimenti || [])];
-            const movimentoCancellato = movimentiAggiornati[index];
-            
-            await rimuoviMovimentiSecondari(movimentoCancellato);
-            
             movimentiAggiornati.splice(index, 1);
             await aggiornaDatiGiornoCorrente({ movimenti: movimentiAggiornati });
         }
@@ -1229,6 +1236,10 @@
                         for (const collName in datiImportati) {
                             if (Array.isArray(datiImportati[collName])) {
                                 datiImportati[collName].forEach(item => {
+                                    if(!item.id) { // Sanity check for missing IDs
+                                        console.warn(`Oggetto senza ID nella collezione ${collName}, verrà saltato.`);
+                                        return;
+                                    }
                                     const docRef = db.collection(collName).doc(item.id);
                                     const dataToSet = { ...item };
                                     delete dataToSet.id;
@@ -1322,8 +1333,8 @@
     let configTabellaCorrente = {};
     
     const configsTabelle = {
-        'anticipi': { isGlobal: true, type: 'anticipi', title: 'Gestione Anticipi', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', tipoAnticipo: 'Tipo Anticipo', anticipoDi: 'Anticipo di', note: 'Note', dataEstinzione: 'Data Estinzione', incassato: 'Incassato' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', tipoAnticipo: 'text', anticipoDi: 'text', note: 'text', dataEstinzione: 'date' }, dataSource: 'anticipi', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['anticipoDi', 'note', 'dataEstinzione', 'incassato'] },
-        'abbuoni': { isGlobal: true, type: 'abbuoni', title: 'Gestione Abbuoni', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', abbuoni: 'Importo Abbuono (€)', personaAbbuono: 'Effettuato da', note: 'Note', abbuonoRegolato: 'Regolato' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', abbuoni: 'number', personaAbbuono: 'text', note: 'text' }, dataSource: 'abbuoni', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['note', 'abbuonoRegolato'] },
+        'anticipi': { type: 'anticipi', title: 'Gestione Anticipi', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', tipoAnticipo: 'Tipo Anticipo', anticipoDi: 'Anticipo di', note: 'Note', dataEstinzione: 'Data Estinzione', incassato: 'Incassato' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', tipoAnticipo: 'text', anticipoDi: 'text', note: 'text', dataEstinzione: 'date' }, dataSource: 'anticipi', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['anticipoDi', 'note', 'dataEstinzione', 'incassato'] },
+        'abbuoni': { type: 'abbuoni', title: 'Gestione Abbuoni', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', abbuoni: 'Importo Abbuono (€)', personaAbbuono: 'Effettuato da', note: 'Note', abbuonoRegolato: 'Regolato' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', abbuoni: 'number', personaAbbuono: 'text', note: 'text' }, dataSource: 'abbuoni', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['note', 'abbuonoRegolato'] },
         'bonifici_hdi_arag': { type: 'bonifici_hdi_arag', title: 'Gestione Bonifici (HDI/ARAG)', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', note: 'Note' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', note: 'text' }, dataSource: 'bonifici_hdi_arag', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['note'] },
         'pos_hdi_arag': { type: 'pos_hdi_arag', title: 'Gestione POS (HDI/ARAG)', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', note: 'Note', dataEstinzione: 'Data Estinzione', incassato: 'Incassato' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', note: 'text', dataEstinzione: 'date' }, dataSource: 'pos_hdi_arag', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['note', 'dataEstinzione', 'incassato'] },
         'bonifici_allianz': { type: 'bonifici_allianz', title: 'Gestione Bonifici (Allianz)', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', note: 'Note' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', note: 'text' }, dataSource: 'bonifici_allianz', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['note'] },
@@ -1340,11 +1351,17 @@
         
         let query = db.collection(configTabellaCorrente.dataSource);
 
-        // Le tabelle non globali vengono filtrate per compagnia se l'utente è in un contesto di compagnia
-        if (!configTabellaCorrente.isGlobal && stato.compagniaSelezionata) {
-            const compagnieFiltrate = configTabellaCorrente.dataSource.includes('hdi_arag') ? ['HDI', 'ARAG'] : [stato.compagniaSelezionata];
-            query = query.where('compagnia', 'in', compagnieFiltrate);
+        // Definisce quali collezioni sono pre-filtrate per compagnia.
+        // Tutto il resto è considerato globale e mostrerà tutti i documenti.
+        if (tipo === 'bonifici_hdi_arag' || tipo === 'pos_hdi_arag') {
+            query = query.where('compagnia', 'in', ['HDI', 'ARAG']);
+        } else if (tipo === 'bonifici_allianz') {
+            query = query.where('compagnia', '==', 'Allianz');
+        } else if (tipo === 'bonifici_vittoria') {
+            query = query.where('compagnia', '==', 'Vittoria');
         }
+        // Nessun 'else': se il tipo non corrisponde, la query rimane non filtrata,
+        // caricando correttamente tutti i documenti per le tabelle globali come 'anticipi' e 'abbuoni'.
 
         unsubscribeGenericTable = query.onSnapshot(snapshot => {
             datiTabellaCorrente = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
