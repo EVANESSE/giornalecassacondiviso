@@ -209,8 +209,8 @@
         .generic-table td[contenteditable="true"]:hover { background-color: #fff3cd; cursor: text; }
         .generic-table input, .generic-table select { padding: 4px; font-size: 0.9rem; border-radius: 3px; border: 1px solid #ccc;}
         .generic-table input[type="checkbox"] { width: auto; transform: scale(1.2); }
-        .generic-table th.col-note, .generic-table td.col-note { width: 35%; }
-        .generic-table th.col-date, .generic-table td.col-date { min-width: 140px; }
+        .generic-table th.col-note, .generic-table td.col-note { width: 30%; }
+        .generic-table th.col-date, .generic-table td.col-date { min-width: 150px; }
         
         .riga-incassato { background-color: #d4edda !important; text-decoration: line-through; color: #555;}
         .riga-vecchio { background-color: #fff3cd; }
@@ -488,6 +488,7 @@
                     <form id="formMovimento" onsubmit="event.preventDefault(); processaFormMovimento();">
                         <input type="hidden" id="editingIndex" value="">
                         <input type="hidden" id="editingMovimentoId" value="">
+                        <input type="hidden" id="editingMovimentoData" value="">
                         <label for="metodologia">Metodologia Incasso:</label>
                         <select id="metodologia" onchange="aggiornaCampiCondizionali()"></select>
                         
@@ -651,7 +652,8 @@
         compagniaSelezionata: null, 
         dataSelezionata: null,
         datiGiornoCorrente: null,
-        datiUtente: null
+        datiUtente: null,
+        movimentiVistaMensile: []
     };
     
     let unsubscribeGiornale = null; 
@@ -726,7 +728,7 @@
     }
     
     // =================================================================
-    // NUOVA GESTIONE ALERT
+    // GESTIONE ALERT
     // =================================================================
 
     function setupAlertListeners() {
@@ -751,7 +753,7 @@
         oggi.setHours(0, 0, 0, 0);
 
         const daMostrare = riattivazioni.filter(r => {
-            const dataRiattivazione = r.dataRiattivazione ? new Date(r.dataRiattivazione) : null;
+            const dataRiattivazione = r.dataRiattivazione ? new Date(r.dataRiattivazione.replace(/-/g, '/')) : null;
             return !r.riattivata && dataRiattivazione && dataRiattivazione <= oggi;
         });
 
@@ -759,7 +761,7 @@
             daMostrare.forEach(r => {
                 const li = document.createElement('li');
                 li.innerHTML = `<strong>${r.contraente || 'N/D'}</strong> - Polizza ${r.nPolizza || 'N/D'} - Targa ${r.targa || 'N/D'}. 
-                                 Data riattivazione: <strong>${new Date(r.dataRiattivazione).toLocaleDateString('it-IT')}</strong>`;
+                                 Data riattivazione: <strong>${new Date(r.dataRiattivazione.replace(/-/g, '/')).toLocaleDateString('it-IT')}</strong>`;
                 alertList.appendChild(li);
             });
             alertContainer.style.display = 'block';
@@ -838,6 +840,7 @@
         if (unsubscribeGiornale) unsubscribeGiornale();
         stato.compagniaSelezionata = null;
         stato.datiGiornoCorrente = null;
+        stato.movimentiVistaMensile = [];
     }
 
     function caricaGiornale(data) {
@@ -860,13 +863,15 @@
                     let movimentiDaMostrare = [];
                     snapshot.forEach(doc => {
                         const movimentiDelGiorno = doc.data().movimenti || [];
-                        movimentiDelGiorno.forEach(m => {
+                        movimentiDelGiorno.forEach((m, index) => {
                             m.dataMovimento = doc.data().dataKey;
+                            m.originalIndex = index;
                             movimentiDaMostrare.push(m);
                         });
                     });
                     movimentiDaMostrare.sort((a, b) => new Date(b.dataMovimento) - new Date(a.dataMovimento));
-                    aggiornaTabellaMovimenti(movimentiDaMostrare);
+                    stato.movimentiVistaMensile = movimentiDaMostrare;
+                    aggiornaTabellaMovimenti(stato.movimentiVistaMensile);
                     aggiornaTuttiRiepiloghi();
                     annullaModifica();
                 }, error => console.error("Errore vista semplificata:", error));
@@ -938,7 +943,7 @@
         };
     }
     
-    async function aggiornaDatiGiornoCorrente(datiParziali, movimentiModificati = null) {
+    async function aggiornaDatiGiornoCorrente(datiParziali, movimentiDaSincronizzare = null) {
         if (!stato.compagniaSelezionata || !stato.dataSelezionata) return;
 
         const dataKey = formatDate(stato.dataSelezionata);
@@ -951,7 +956,6 @@
         };
         const datiDaSalvare = { ...datiDefault, ...datiParziali };
         
-        // Assicura che i campi base siano sempre presenti, specialmente per nuovi documenti
         datiDaSalvare.dataKey = dataKey;
         datiDaSalvare.compagnia = stato.compagniaSelezionata;
         datiDaSalvare.anno = stato.dataSelezionata.getFullYear();
@@ -962,9 +966,8 @@
             statusIndicator.className = 'saving';
             await docRef.set(datiDaSalvare, { merge: true });
             
-            // Gestione effetti collaterali DOPO il salvataggio
-            if (movimentiModificati) {
-                for (const mov of movimentiModificati) {
+            if (movimentiDaSincronizzare) {
+                for (const mov of movimentiDaSincronizzare) {
                     await gestisciMovimentiSecondari(mov, dataKey, stato.compagniaSelezionata);
                 }
             }
@@ -977,8 +980,12 @@
     }
 
     async function processaFormMovimento() {
+        const isSimplifiedView = stato.compagniaSelezionata === 'ARAG' || stato.compagniaSelezionata === 'Helvetia';
+
         const editingIndex = document.getElementById('editingIndex').value;
         const editingMovimentoId = document.getElementById('editingMovimentoId').value;
+        const editingMovimentoData = document.getElementById('editingMovimentoData').value;
+        
         const baseMovimento = {
             createdBy: stato.datiUtente.displayName,
             createdAt: new Date().toISOString(),
@@ -1017,27 +1024,70 @@
                 numeroAssegno: document.getElementById('numeroAssegno').value,
             });
         }
-        
-        let movimentiAggiornati = [...(stato.datiGiornoCorrente.movimenti || [])];
-        if (editingIndex !== "") {
-             const vecchioMovimento = movimentiAggiornati[editingIndex];
-             // Rimuove il vecchio movimento per pulire eventuali record secondari
-             await rimuoviMovimentiSecondari(vecchioMovimento);
-            movimentiAggiornati[editingIndex] = nuoviMovimenti[0];
-            movimentiDaSincronizzare = [nuoviMovimenti[0]];
-        } else {
-            movimentiAggiornati.push(...nuoviMovimenti);
-            movimentiDaSincronizzare = nuoviMovimenti;
-        }
+        movimentiDaSincronizzare = nuoviMovimenti;
 
-        await aggiornaDatiGiornoCorrente({ movimenti: movimentiAggiornati }, movimentiDaSincronizzare);
+        if(isSimplifiedView) {
+            const targetDateKey = editingMovimentoData || formatDate(new Date());
+            const docId = `${stato.compagniaSelezionata}_${targetDateKey}`;
+            const docRef = db.collection('giornaliCassa').doc(docId);
+            
+            try {
+                 statusIndicator.textContent = 'Salvataggio...';
+                 statusIndicator.className = 'saving';
+                await db.runTransaction(async (transaction) => {
+                    const doc = await transaction.get(docRef);
+                    const targetDate = new Date(targetDateKey.replace(/-/g, '/'));
+                    const datiGiorno = doc.exists ? doc.data() : creaNuovoGiorno(targetDate, 0);
+                    let movimentiAggiornati = [...(datiGiorno.movimenti || [])];
+
+                    if (editingIndex !== "") {
+                        const movimentoOriginale = stato.movimentiVistaMensile[editingIndex];
+                        const indexNelDocumento = movimentiAggiornati.findIndex(m => m.movimentoId === movimentoOriginale.movimentoId);
+                        if(indexNelDocumento > -1) {
+                            const vecchioMovimento = movimentiAggiornati[indexNelDocumento];
+                            await rimuoviMovimentiSecondari(vecchioMovimento);
+                            movimentiAggiornati[indexNelDocumento] = nuoviMovimenti[0];
+                        }
+                    } else {
+                        movimentiAggiornati.push(...nuoviMovimenti);
+                    }
+                    transaction.set(docRef, { ...datiGiorno, movimenti: movimentiAggiornati }, { merge: true });
+                });
+                for (const mov of movimentiDaSincronizzare) {
+                    await gestisciMovimentiSecondari(mov, targetDateKey, stato.compagniaSelezionata);
+                }
+
+            } catch (error) {
+                 console.error("Errore salvataggio in vista semplificata: ", error);
+                 statusIndicator.textContent = 'Errore Salvataggio';
+                 statusIndicator.className = 'error';
+            }
+
+        } else {
+            let movimentiAggiornati = [...(stato.datiGiornoCorrente.movimenti || [])];
+            if (editingIndex !== "") {
+                const vecchioMovimento = movimentiAggiornati[editingIndex];
+                await rimuoviMovimentiSecondari(vecchioMovimento);
+                movimentiAggiornati[editingIndex] = nuoviMovimenti[0];
+            } else {
+                movimentiAggiornati.push(...nuoviMovimenti);
+            }
+            await aggiornaDatiGiornoCorrente({ movimenti: movimentiAggiornati }, movimentiDaSincronizzare);
+        }
+        
         annullaModifica();
     }
     
     function modificaMovimento(index) {
-        const movimento = stato.datiGiornoCorrente.movimenti[index];
+        const isSimplifiedView = stato.compagniaSelezionata === 'ARAG' || stato.compagniaSelezionata === 'Helvetia';
+        const movimento = isSimplifiedView ? stato.movimentiVistaMensile[index] : stato.datiGiornoCorrente.movimenti[index];
+
         document.getElementById('editingIndex').value = index;
         document.getElementById('editingMovimentoId').value = movimento.movimentoId;
+        if(isSimplifiedView) {
+            document.getElementById('editingMovimentoData').value = movimento.dataMovimento;
+        }
+
         document.getElementById('metodologia').value = movimento.metodologia;
         document.getElementById('tipoPosAllianz').value = movimento.tipoPosAllianz || 'POS Direzione';
         document.getElementById('tipoAnticipo').value = movimento.tipoAnticipo || 'Anticipo Contanti';
@@ -1061,6 +1111,7 @@
     function annullaModifica() {
         document.getElementById('editingIndex').value = "";
         document.getElementById('editingMovimentoId').value = "";
+        document.getElementById('editingMovimentoData').value = "";
         document.getElementById('formMovimento').reset();
         document.getElementById('form-title').textContent = "2. Registrazione Movimento";
         document.getElementById('form-buttons').innerHTML = `<button type="submit">Aggiungi Movimento</button>`;
@@ -1069,11 +1120,26 @@
     }
 
     async function cancellaMovimento(index) {
-        if (confirm('Sei sicuro di voler eliminare questo movimento?')) {
+        if (!confirm('Sei sicuro di voler eliminare questo movimento?')) return;
+        
+        const isSimplifiedView = stato.compagniaSelezionata === 'ARAG' || stato.compagniaSelezionata === 'Helvetia';
+
+        if(isSimplifiedView) {
+            const movimentoCancellato = stato.movimentiVistaMensile[index];
+            await rimuoviMovimentiSecondari(movimentoCancellato);
+
+            const docId = `${stato.compagniaSelezionata}_${movimentoCancellato.dataMovimento}`;
+            const docRef = db.collection('giornaliCassa').doc(docId);
+            const doc = await docRef.get();
+            if(doc.exists) {
+                const movimentiOriginali = doc.data().movimenti || [];
+                const nuoviMovimenti = movimentiOriginali.filter(m => m.movimentoId !== movimentoCancellato.movimentoId);
+                await docRef.update({ movimenti: nuoviMovimenti });
+            }
+        } else {
             let movimentiAggiornati = [...(stato.datiGiornoCorrente.movimenti || [])];
             const movimentoCancellato = movimentiAggiornati[index];
             
-            // Rimuove prima i record collegati
             await rimuoviMovimentiSecondari(movimentoCancellato);
             
             movimentiAggiornati.splice(index, 1);
@@ -1186,11 +1252,11 @@
 
 
     // =========================================================
-    // NUOVA LOGICA DI SINCRONIZZAZIONE MOVIMENTI
+    // LOGICA DI SINCRONIZZAZIONE MOVIMENTI
     // =========================================================
 
     async function gestisciMovimentiSecondari(movimento, dataKey, compagnia) {
-        if (!movimento.movimentoId) return; // Se non ha ID non può essere sincronizzato
+        if (!movimento.movimentoId) return; 
         const docId = movimento.movimentoId;
         const baseData = {
             dataKey: dataKey,
@@ -1226,7 +1292,6 @@
         } else if (movimento.metodologia === 'POS') {
             if (compagnia === 'HDI' || compagnia === 'ARAG') targetCollection = 'pos_hdi_arag';
         }
-        // Pulisci le altre collezioni per evitare residui in caso di cambio metodologia
         const allCollections = ['bonifici_hdi_arag', 'bonifici_allianz', 'bonifici_vittoria', 'pos_hdi_arag'];
         for (const coll of allCollections) {
             if (coll !== targetCollection) {
@@ -1257,11 +1322,11 @@
     let configTabellaCorrente = {};
     
     const configsTabelle = {
-        'anticipi': { type: 'anticipi', title: 'Gestione Anticipi', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', tipoAnticipo: 'Tipo Anticipo', anticipoDi: 'Anticipo di', note: 'Note', dataEstinzione: 'Data Estinzione', incassato: 'Incassato' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', tipoAnticipo: 'text', anticipoDi: 'text', note: 'text', dataEstinzione: 'date' }, dataSource: 'anticipi', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['anticipoDi', 'note', 'dataEstinzione', 'incassato'] },
-        'abbuoni': { type: 'abbuoni', title: 'Gestione Abbuoni', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', abbuoni: 'Importo Abbuono (€)', personaAbbuono: 'Effettuato da', note: 'Note', abbuonoRegolato: 'Regolato' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', abbuoni: 'number', personaAbbuono: 'text', note: 'text' }, dataSource: 'abbuoni', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['note', 'abbuonoRegolato'] },
+        'anticipi': { isGlobal: true, type: 'anticipi', title: 'Gestione Anticipi', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', tipoAnticipo: 'Tipo Anticipo', anticipoDi: 'Anticipo di', note: 'Note', dataEstinzione: 'Data Estinzione', incassato: 'Incassato' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', tipoAnticipo: 'text', anticipoDi: 'text', note: 'text', dataEstinzione: 'date' }, dataSource: 'anticipi', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['anticipoDi', 'note', 'dataEstinzione', 'incassato'] },
+        'abbuoni': { isGlobal: true, type: 'abbuoni', title: 'Gestione Abbuoni', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', abbuoni: 'Importo Abbuono (€)', personaAbbuono: 'Effettuato da', note: 'Note', abbuonoRegolato: 'Regolato' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', abbuoni: 'number', personaAbbuono: 'text', note: 'text' }, dataSource: 'abbuoni', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['note', 'abbuonoRegolato'] },
         'bonifici_hdi_arag': { type: 'bonifici_hdi_arag', title: 'Gestione Bonifici (HDI/ARAG)', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', note: 'Note' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', note: 'text' }, dataSource: 'bonifici_hdi_arag', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['note'] },
         'pos_hdi_arag': { type: 'pos_hdi_arag', title: 'Gestione POS (HDI/ARAG)', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', note: 'Note', dataEstinzione: 'Data Estinzione', incassato: 'Incassato' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', note: 'text', dataEstinzione: 'date' }, dataSource: 'pos_hdi_arag', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['note', 'dataEstinzione', 'incassato'] },
-        'bonifici_allianz': { type: 'bonifici_allianz', title: 'Gestione Bonifici (Allianz)', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', note: 'Note', dataEstinzione: 'Data Estinzione', incassato: 'Incassato' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', note: 'text', dataEstinzione: 'date' }, dataSource: 'bonifici_allianz', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['note', 'dataEstinzione', 'incassato'] },
+        'bonifici_allianz': { type: 'bonifici_allianz', title: 'Gestione Bonifici (Allianz)', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', note: 'Note' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', note: 'text' }, dataSource: 'bonifici_allianz', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['note'] },
         'bonifici_vittoria': { type: 'bonifici_vittoria', title: 'Gestione Bonifici (Vittoria)', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', note: 'Note' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', note: 'text' }, dataSource: 'bonifici_vittoria', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['note'] },
         'riattivazioni_vittoria': { type: 'riattivazioni_vittoria', title: 'Gestione Riattivazioni Vittoria', columns: { contraente: 'CONTRAENTE', nPolizza: 'N° POLIZZA', targa: 'TARGA', dataSospensione: 'DATA SOSPENSIONE', dataRiattivazione: 'DATA RIATTIVAZIONE', note: 'NOTE', riattivata: 'RIATTIVATA' }, formFields: { contraente: 'text', nPolizza: 'text', targa: 'text', dataSospensione: 'date', dataRiattivazione: 'date', note: 'text' }, dataSource: 'riattivazioni_vittoria', filterByDateOn: 'dataSospensione', searchClientOn: 'contraente' },
         'promemoria': { type: 'promemoria', title: 'Gestione Promemoria', columns: { nota: 'NOTA PROMEMORIA', utente: 'UTENTE', data: 'DATA', fatto: 'FATTO' }, formFields: { data: 'date', utente: 'text', nota: 'textarea' }, dataSource: 'promemoria', filterByDateOn: 'data', searchClientOn: 'utente' }
@@ -1272,8 +1337,16 @@
         if (!configTabellaCorrente) return;
 
         if (unsubscribeGenericTable) unsubscribeGenericTable();
+        
+        let query = db.collection(configTabellaCorrente.dataSource);
 
-        unsubscribeGenericTable = db.collection(configTabellaCorrente.dataSource).onSnapshot(snapshot => {
+        // Le tabelle non globali vengono filtrate per compagnia se l'utente è in un contesto di compagnia
+        if (!configTabellaCorrente.isGlobal && stato.compagniaSelezionata) {
+            const compagnieFiltrate = configTabellaCorrente.dataSource.includes('hdi_arag') ? ['HDI', 'ARAG'] : [stato.compagniaSelezionata];
+            query = query.where('compagnia', 'in', compagnieFiltrate);
+        }
+
+        unsubscribeGenericTable = query.onSnapshot(snapshot => {
             datiTabellaCorrente = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             applicaFiltriTabella();
         }, error => console.error(`Errore nel listener della tabella ${tipo}: `, error));
@@ -1424,7 +1497,7 @@
         let nuovoElemento = {
             createdBy: stato.datiUtente.displayName,
             createdAt: new Date().toISOString(),
-            isAutomatic: false // Marcato come manuale
+            isAutomatic: false
         };
         
         for(const field in config.formFields) {
@@ -1446,15 +1519,15 @@
         const clientKey = configTabellaCorrente.searchClientOn;
 
         let datiFiltrati = datiTabellaCorrente;
-        if (anno !== 'tutti') datiFiltrati = datiFiltrati.filter(d => d[dateKey] && new Date(d[dateKey]).getFullYear() == anno);
-        if (mese !== 'tutti') datiFiltrati = datiFiltrati.filter(d => d[dateKey] && new Date(d[dateKey]).getMonth() == mese);
+        if (anno !== 'tutti') datiFiltrati = datiFiltrati.filter(d => d[dateKey] && new Date(d[dateKey].replace(/-/g, '/')).getFullYear() == anno);
+        if (mese !== 'tutti') datiFiltrati = datiFiltrati.filter(d => d[dateKey] && new Date(d[dateKey].replace(/-/g, '/')).getMonth() == mese);
         if (clienteInput) datiFiltrati = datiFiltrati.filter(d => d[clientKey] && String(d[clientKey]).toLowerCase().includes(clienteInput));
         
         popolaTabellaGenerica(datiFiltrati);
     }
     
     // ===============================================
-    // FUNZIONI DI UTILITY (poche modifiche)
+    // FUNZIONI DI UTILITY
     // ===============================================
 
     function formatDate(date) {
@@ -1469,7 +1542,7 @@
     function getGiornoPrecedenteLavorativo(data) {
         let dataPrec = new Date(data);
         dataPrec.setDate(data.getDate() - 1);
-        while (dataPrec.getDay() === 0 || dataPrec.getDay() === 6) { // 0=Domenica, 6=Sabato
+        while (dataPrec.getDay() === 0 || dataPrec.getDay() === 6) { 
             dataPrec.setDate(dataPrec.getDate() - 1);
         }
         return dataPrec;
@@ -1730,7 +1803,7 @@
     async function verificaChiusura() {
         const teorica = calcolaCassaTeorica();
         const fisica = calcolaConteggioFisico();
-        const differenza = fisica - teorica; // Cambiato per mostrare eccesso/difetto
+        const differenza = fisica - teorica; 
         let result = {};
         if (Math.abs(differenza) < 0.01) {
             result = { text: `✅ I CONTI TORNANO! Differenza: € 0.00`, class: 'ok' };
@@ -1785,7 +1858,7 @@
         const annoSelect = document.getElementById('generic-filtro-anno');
         const meseSelect = document.getElementById('generic-filtro-mese');
         const dateKey = configTabellaCorrente.filterByDateOn;
-        const years = new Set(datiTabellaCorrente.map(d => d[dateKey] ? new Date(d[dateKey]).getFullYear() : null).filter(y => y));
+        const years = new Set(datiTabellaCorrente.map(d => d[dateKey] ? new Date(d[dateKey].replace(/-/g, '/')).getFullYear() : null).filter(y => y));
         annoSelect.innerHTML = '<option value="tutti">Tutti</option>';
         Array.from(years).sort((a,b)=>b-a).forEach(y => annoSelect.innerHTML += `<option value="${y}">${y}</option>`);
         meseSelect.innerHTML = '<option value="tutti">Tutti</option>';
@@ -1802,7 +1875,7 @@
         if (movimento.incassato || movimento.abbuonoRegolato || movimento.riattivata || movimento.fatto) {
             riga.classList.add('riga-incassato');
         } else {
-            const dataMovimento = new Date(movimento[dateKey]);
+            const dataMovimento = new Date(movimento[dateKey].replace(/-/g, '/'));
             const diffGiorni = Math.floor((new Date() - dataMovimento) / (1000 * 60 * 60 * 24));
             if (diffGiorni > 30) riga.classList.add('riga-critico');
             else if (diffGiorni > 15) riga.classList.add('riga-vecchio');
