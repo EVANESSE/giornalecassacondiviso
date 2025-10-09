@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestione Cassa Collaborativa</title>
-    <!-- Script Firebase v8 (compatibile con il codice esistente) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
@@ -304,7 +303,6 @@
     </style>
 </head>
 <body id="app-body">
-    <!-- Contenitore per Login/Registrazione -->
     <div id="auth-container">
         <h2>Gestione Cassa</h2>
         
@@ -489,6 +487,7 @@
                     <h2 id="form-title">2. Registrazione Movimento</h2>
                     <form id="formMovimento" onsubmit="event.preventDefault(); processaFormMovimento();">
                         <input type="hidden" id="editingIndex" value="">
+                        <input type="hidden" id="editingMovimentoId" value="">
                         <label for="metodologia">Metodologia Incasso:</label>
                         <select id="metodologia" onchange="aggiornaCampiCondizionali()"></select>
                         
@@ -628,8 +627,7 @@
     </div>
 
     <div id="print-layout" style="display: none;">
-        <!-- Layout di stampa invariato -->
-    </div>
+        </div>
 
 <script>
     // ========= NUOVA CONFIGURAZIONE FIREBASE =========
@@ -728,7 +726,7 @@
     }
     
     // =================================================================
-    // LOGICA PRINCIPALE E GIORNALE CASSA
+    // NUOVA GESTIONE ALERT
     // =================================================================
 
     function setupAlertListeners() {
@@ -744,7 +742,56 @@
             controllaPromemoria(promemoria);
         }, error => console.error("Errore listener promemoria: ", error));
     }
-    
+
+    function controllaRiattivazioni(riattivazioni = []) {
+        const alertContainer = document.getElementById('riattivazioni-alert-container');
+        const alertList = document.getElementById('riattivazioni-alert-list');
+        alertList.innerHTML = '';
+        const oggi = new Date();
+        oggi.setHours(0, 0, 0, 0);
+
+        const daMostrare = riattivazioni.filter(r => {
+            const dataRiattivazione = r.dataRiattivazione ? new Date(r.dataRiattivazione) : null;
+            return !r.riattivata && dataRiattivazione && dataRiattivazione <= oggi;
+        });
+
+        if (daMostrare.length > 0) {
+            daMostrare.forEach(r => {
+                const li = document.createElement('li');
+                li.innerHTML = `<strong>${r.contraente || 'N/D'}</strong> - Polizza ${r.nPolizza || 'N/D'} - Targa ${r.targa || 'N/D'}. 
+                                 Data riattivazione: <strong>${new Date(r.dataRiattivazione).toLocaleDateString('it-IT')}</strong>`;
+                alertList.appendChild(li);
+            });
+            alertContainer.style.display = 'block';
+        } else {
+            alertContainer.style.display = 'none';
+        }
+    }
+
+    function controllaPromemoria(promemoria = []) {
+        const alertContainer = document.getElementById('promemoria-alert-container');
+        const alertList = document.getElementById('promemoria-alert-list');
+        alertList.innerHTML = '';
+        const oggiStr = formatDate(new Date());
+
+        const daMostrare = promemoria.filter(p => !p.fatto && p.data === oggiStr);
+
+        if (daMostrare.length > 0) {
+            daMostrare.forEach(p => {
+                const li = document.createElement('li');
+                li.innerHTML = `<strong>${p.utente || 'N/D'}:</strong> ${p.nota || ''}`;
+                alertList.appendChild(li);
+            });
+            alertContainer.style.display = 'block';
+        } else {
+            alertContainer.style.display = 'none';
+        }
+    }
+
+    // =================================================================
+    // LOGICA PRINCIPALE E GIORNALE CASSA
+    // =================================================================
+
     function inizializzaApp(compagnia) {
         stato.compagniaSelezionata = compagnia;
         document.body.className = `theme-${compagnia.toLowerCase()}`;
@@ -873,9 +920,8 @@
             divRisultato.className = 'risultato-verifica';
         }
 
-        const movimentiDaMostrare = (datiGiorno.movimenti || []).filter(m => !m.isManuallyAdded);
         impostaStatoGiornata(datiGiorno.isGiornoFestivo);
-        aggiornaTabellaMovimenti(movimentiDaMostrare);
+        aggiornaTabellaMovimenti(datiGiorno.movimenti);
         aggiornaTuttiRiepiloghi();
     }
     
@@ -892,7 +938,7 @@
         };
     }
     
-    async function aggiornaDatiGiornoCorrente(datiParziali) {
+    async function aggiornaDatiGiornoCorrente(datiParziali, movimentiModificati = null) {
         if (!stato.compagniaSelezionata || !stato.dataSelezionata) return;
 
         const dataKey = formatDate(stato.dataSelezionata);
@@ -903,19 +949,26 @@
             lastModifiedBy: stato.datiUtente.displayName,
             lastModifiedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
-
-        const datiDaSalvare = Object.assign(datiDefault, datiParziali, {
-            // Assicurati che questi campi base siano sempre presenti
-            dataKey: dataKey,
-            compagnia: stato.compagniaSelezionata,
-            anno: stato.dataSelezionata.getFullYear(),
-            mese: stato.dataSelezionata.getMonth()
-        });
+        const datiDaSalvare = { ...datiDefault, ...datiParziali };
+        
+        // Assicura che i campi base siano sempre presenti, specialmente per nuovi documenti
+        datiDaSalvare.dataKey = dataKey;
+        datiDaSalvare.compagnia = stato.compagniaSelezionata;
+        datiDaSalvare.anno = stato.dataSelezionata.getFullYear();
+        datiDaSalvare.mese = stato.dataSelezionata.getMonth();
         
         try {
             statusIndicator.textContent = 'Salvataggio...';
             statusIndicator.className = 'saving';
             await docRef.set(datiDaSalvare, { merge: true });
+            
+            // Gestione effetti collaterali DOPO il salvataggio
+            if (movimentiModificati) {
+                for (const mov of movimentiModificati) {
+                    await gestisciMovimentiSecondari(mov, dataKey, stato.compagniaSelezionata);
+                }
+            }
+
         } catch (error) {
             console.error("Errore durante l'aggiornamento del giorno: ", error);
             statusIndicator.textContent = 'Errore Salvataggio';
@@ -925,26 +978,29 @@
 
     async function processaFormMovimento() {
         const editingIndex = document.getElementById('editingIndex').value;
+        const editingMovimentoId = document.getElementById('editingMovimentoId').value;
         const baseMovimento = {
             createdBy: stato.datiUtente.displayName,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            movimentoId: editingMovimentoId || `${new Date().getTime()}-${Math.random().toString(36).substring(2, 9)}`
         };
+
         const metodologia = document.getElementById('metodologia').value;
         let nuoviMovimenti = [];
+        let movimentiDaSincronizzare = [];
 
         if (metodologia === 'Versamento') {
             const versamentoContanti = parseFloat(document.getElementById('versamentoContanti').value) || 0;
             const versamentoAssegni = parseFloat(document.getElementById('versamentoAssegni').value) || 0;
-            const common = { ...baseMovimento, metodologia: 'Versamento', importo: 0, provvigioni: 0, arrotondamenti: 0, abbuoni: 0 };
-            if (versamentoContanti > 0) nuoviMovimenti.push({ ...common, nomeCliente: 'Versamento Contanti', uscite: versamentoContanti });
-            if (versamentoAssegni > 0) nuoviMovimenti.push({ ...common, nomeCliente: 'Versamento Assegni', uscite: versamentoAssegni });
+            if (versamentoContanti > 0) nuoviMovimenti.push({ ...baseMovimento, movimentoId: `${baseMovimento.movimentoId}-1`, metodologia: 'Versamento', nomeCliente: 'Versamento Contanti', uscite: versamentoContanti });
+            if (versamentoAssegni > 0) nuoviMovimenti.push({ ...baseMovimento, movimentoId: `${baseMovimento.movimentoId}-2`, metodologia: 'Versamento', nomeCliente: 'Versamento Assegni', uscite: versamentoAssegni });
         } else if (metodologia === 'Incasso Multiplo') {
             const common = { ...baseMovimento, nomeCliente: document.getElementById('nomeCliente').value, numeroPolizza: document.getElementById('numeroPolizza').value, provvigioni: parseFloat(document.getElementById('provvigioni').value) || 0, arrotondamenti: parseFloat(document.getElementById('arrotondamenti').value) || 0, abbuoni: parseFloat(document.getElementById('abbuoni').value) || 0, personaAbbuono: document.getElementById('personaAbbuono').value, uscite: parseFloat(document.getElementById('uscite').value) || 0 };
             const importo1 = parseFloat(document.getElementById('importoMultiplo1').value) || 0;
             const importo2 = parseFloat(document.getElementById('importoMultiplo2').value) || 0;
             if (Math.abs((parseFloat(document.getElementById('importo').value) || 0) - (importo1 + importo2)) > 0.01) { alert("La somma delle parti non corrisponde all'importo totale."); return; }
-            nuoviMovimenti.push({ ...common, isSplit: true, importo: importo1, metodologia: document.getElementById('metodologiaMultiplo1').value, ...leggiCampiCondizionaliMultiplo(1) });
-            nuoviMovimenti.push({ ...common, isSplit: true, importo: importo2, metodologia: document.getElementById('metodologiaMultiplo2').value, ...leggiCampiCondizionaliMultiplo(2) });
+            nuoviMovimenti.push({ ...common, movimentoId: `${baseMovimento.movimentoId}-1`, isSplit: true, importo: importo1, metodologia: document.getElementById('metodologiaMultiplo1').value, ...leggiCampiCondizionaliMultiplo(1) });
+            nuoviMovimenti.push({ ...common, movimentoId: `${baseMovimento.movimentoId}-2`, isSplit: true, importo: importo2, metodologia: document.getElementById('metodologiaMultiplo2').value, ...leggiCampiCondizionaliMultiplo(2) });
         } else {
             nuoviMovimenti.push({
                 ...baseMovimento,
@@ -964,19 +1020,24 @@
         
         let movimentiAggiornati = [...(stato.datiGiornoCorrente.movimenti || [])];
         if (editingIndex !== "") {
+             const vecchioMovimento = movimentiAggiornati[editingIndex];
+             // Rimuove il vecchio movimento per pulire eventuali record secondari
+             await rimuoviMovimentiSecondari(vecchioMovimento);
             movimentiAggiornati[editingIndex] = nuoviMovimenti[0];
+            movimentiDaSincronizzare = [nuoviMovimenti[0]];
         } else {
             movimentiAggiornati.push(...nuoviMovimenti);
+            movimentiDaSincronizzare = nuoviMovimenti;
         }
-        await aggiornaDatiGiornoCorrente({ movimenti: movimentiAggiornati });
+
+        await aggiornaDatiGiornoCorrente({ movimenti: movimentiAggiornati }, movimentiDaSincronizzare);
         annullaModifica();
     }
     
-    // ... (Il resto delle funzioni del giornale cassa come modifica, cancella, etc. sono quasi invariate e si appoggiano ad `aggiornaDatiGiornoCorrente`)
-
     function modificaMovimento(index) {
         const movimento = stato.datiGiornoCorrente.movimenti[index];
         document.getElementById('editingIndex').value = index;
+        document.getElementById('editingMovimentoId').value = movimento.movimentoId;
         document.getElementById('metodologia').value = movimento.metodologia;
         document.getElementById('tipoPosAllianz').value = movimento.tipoPosAllianz || 'POS Direzione';
         document.getElementById('tipoAnticipo').value = movimento.tipoAnticipo || 'Anticipo Contanti';
@@ -986,10 +1047,10 @@
         document.getElementById('numeroPolizza').value = movimento.numeroPolizza;
         document.getElementById('importo').value = movimento.importo;
         document.getElementById('provvigioni').value = movimento.provvigioni || '';
-        document.getElementById('arrotondamenti').value = movimento.arrotondamenti;
+        document.getElementById('arrotondamenti').value = movimento.arrotondamenti || '';
         document.getElementById('abbuoni').value = movimento.abbuoni || '';
         document.getElementById('personaAbbuono').value = movimento.personaAbbuono || '';
-        document.getElementById('uscite').value = movimento.uscite;
+        document.getElementById('uscite').value = movimento.uscite || '';
         document.getElementById('form-title').textContent = `Modifica Movimento`;
         document.getElementById('form-buttons').innerHTML = `<button type="submit">Salva Modifiche</button><button type="button" class="button-secondary" onclick="annullaModifica()">Annulla</button>`;
         aggiornaCampiCondizionali();
@@ -999,6 +1060,7 @@
 
     function annullaModifica() {
         document.getElementById('editingIndex').value = "";
+        document.getElementById('editingMovimentoId').value = "";
         document.getElementById('formMovimento').reset();
         document.getElementById('form-title').textContent = "2. Registrazione Movimento";
         document.getElementById('form-buttons').innerHTML = `<button type="submit">Aggiungi Movimento</button>`;
@@ -1009,6 +1071,11 @@
     async function cancellaMovimento(index) {
         if (confirm('Sei sicuro di voler eliminare questo movimento?')) {
             let movimentiAggiornati = [...(stato.datiGiornoCorrente.movimenti || [])];
+            const movimentoCancellato = movimentiAggiornati[index];
+            
+            // Rimuove prima i record collegati
+            await rimuoviMovimentiSecondari(movimentoCancellato);
+            
             movimentiAggiornati.splice(index, 1);
             await aggiornaDatiGiornoCorrente({ movimenti: movimentiAggiornati });
         }
@@ -1040,7 +1107,7 @@
     }
 
     // ===============================================
-    // IMPORT / EXPORT (CORRETTI)
+    // IMPORT / EXPORT 
     // ===============================================
 
     async function esportaBackup() {
@@ -1118,19 +1185,84 @@
     }
 
 
+    // =========================================================
+    // NUOVA LOGICA DI SINCRONIZZAZIONE MOVIMENTI
+    // =========================================================
+
+    async function gestisciMovimentiSecondari(movimento, dataKey, compagnia) {
+        if (!movimento.movimentoId) return; // Se non ha ID non può essere sincronizzato
+        const docId = movimento.movimentoId;
+        const baseData = {
+            dataKey: dataKey,
+            compagnia: compagnia,
+            nomeCliente: movimento.nomeCliente,
+            numeroPolizza: movimento.numeroPolizza,
+            isAutomatic: true,
+            sourceJournalDate: dataKey,
+            lastModifiedBy: stato.datiUtente.displayName,
+            lastModifiedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        // 1. Gestione Anticipi
+        if (movimento.metodologia === 'Anticipo') {
+            await db.collection('anticipi').doc(docId).set({ ...baseData, importo: movimento.importo, tipoAnticipo: movimento.tipoAnticipo, anticipoDi: '', note: '' }, { merge: true });
+        } else {
+            await db.collection('anticipi').doc(docId).delete().catch(() => {});
+        }
+
+        // 2. Gestione Abbuoni
+        if ((movimento.abbuoni || 0) > 0) {
+            await db.collection('abbuoni').doc(docId).set({ ...baseData, abbuoni: movimento.abbuoni, personaAbbuono: movimento.personaAbbuono, note: '' }, { merge: true });
+        } else {
+            await db.collection('abbuoni').doc(docId).delete().catch(() => {});
+        }
+
+        // 3. Gestione Bonifici e POS
+        let targetCollection = null;
+        if (movimento.metodologia === 'Bonifico') {
+            if (compagnia === 'HDI' || compagnia === 'ARAG') targetCollection = 'bonifici_hdi_arag';
+            else if (compagnia === 'Allianz') targetCollection = 'bonifici_allianz';
+            else if (compagnia === 'Vittoria') targetCollection = 'bonifici_vittoria';
+        } else if (movimento.metodologia === 'POS') {
+            if (compagnia === 'HDI' || compagnia === 'ARAG') targetCollection = 'pos_hdi_arag';
+        }
+        // Pulisci le altre collezioni per evitare residui in caso di cambio metodologia
+        const allCollections = ['bonifici_hdi_arag', 'bonifici_allianz', 'bonifici_vittoria', 'pos_hdi_arag'];
+        for (const coll of allCollections) {
+            if (coll !== targetCollection) {
+                await db.collection(coll).doc(docId).delete().catch(() => {});
+            }
+        }
+        if (targetCollection) {
+            await db.collection(targetCollection).doc(docId).set({ ...baseData, importo: movimento.importo, note: '' }, { merge: true });
+        }
+    }
+
+    async function rimuoviMovimentiSecondari(movimento) {
+        if (!movimento || !movimento.movimentoId) return;
+        const docId = movimento.movimentoId;
+        const collections = ['anticipi', 'abbuoni', 'bonifici_hdi_arag', 'pos_hdi_arag', 'bonifici_allianz', 'bonifici_vittoria'];
+        for (const coll of collections) {
+            try {
+                await db.collection(coll).doc(docId).delete();
+            } catch (error) { /* Ignora errori se il documento non esiste */ }
+        }
+    }
+
+
     // ===============================================
-    // SISTEMA GESTIONE TABELLE "ALTRE FUNZIONI" (CORRETTO)
+    // SISTEMA GESTIONE TABELLE "ALTRE FUNZIONI"
     // ===============================================
     let datiTabellaCorrente = [];
     let configTabellaCorrente = {};
     
     const configsTabelle = {
-        'anticipi': { type: 'anticipi', title: 'Gestione Anticipi', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', tipoAnticipo: 'Tipo Anticipo', anticipoDi: 'Anticipo di', note: 'Note', dataEstinzione: 'Data Estinzione', incassato: 'Incassato' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', tipoAnticipo: 'text', anticipoDi: 'text', note: 'text', dataEstinzione: 'date' }, dataSource: 'anticipi', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente' },
-        'abbuoni': { type: 'abbuoni', title: 'Gestione Abbuoni', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', abbuoni: 'Importo Abbuono (€)', personaAbbuono: 'Effettuato da', note: 'Note', abbuonoRegolato: 'Regolato' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', abbuoni: 'number', personaAbbuono: 'text', note: 'text' }, dataSource: 'abbuoni', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente' },
-        'bonifici_hdi_arag': { type: 'bonifici_hdi_arag', title: 'Gestione Bonifici (HDI/ARAG)', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', note: 'Note' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', note: 'text' }, dataSource: 'bonifici_hdi_arag', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente' },
-        'pos_hdi_arag': { type: 'pos_hdi_arag', title: 'Gestione POS (HDI/ARAG)', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', note: 'Note', dataEstinzione: 'Data Estinzione', incassato: 'Incassato' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', note: 'text', dataEstinzione: 'date' }, dataSource: 'pos_hdi_arag', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente' },
-        'bonifici_allianz': { type: 'bonifici_allianz', title: 'Gestione Bonifici (Allianz)', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', note: 'Note', dataEstinzione: 'Data Estinzione', incassato: 'Incassato' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', note: 'text', dataEstinzione: 'date' }, dataSource: 'bonifici_allianz', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente' },
-        'bonifici_vittoria': { type: 'bonifici_vittoria', title: 'Gestione Bonifici (Vittoria)', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', note: 'Note' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', note: 'text' }, dataSource: 'bonifici_vittoria', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente' },
+        'anticipi': { type: 'anticipi', title: 'Gestione Anticipi', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', tipoAnticipo: 'Tipo Anticipo', anticipoDi: 'Anticipo di', note: 'Note', dataEstinzione: 'Data Estinzione', incassato: 'Incassato' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', tipoAnticipo: 'text', anticipoDi: 'text', note: 'text', dataEstinzione: 'date' }, dataSource: 'anticipi', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['anticipoDi', 'note', 'dataEstinzione', 'incassato'] },
+        'abbuoni': { type: 'abbuoni', title: 'Gestione Abbuoni', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', abbuoni: 'Importo Abbuono (€)', personaAbbuono: 'Effettuato da', note: 'Note', abbuonoRegolato: 'Regolato' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', abbuoni: 'number', personaAbbuono: 'text', note: 'text' }, dataSource: 'abbuoni', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['note', 'abbuonoRegolato'] },
+        'bonifici_hdi_arag': { type: 'bonifici_hdi_arag', title: 'Gestione Bonifici (HDI/ARAG)', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', note: 'Note' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', note: 'text' }, dataSource: 'bonifici_hdi_arag', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['note'] },
+        'pos_hdi_arag': { type: 'pos_hdi_arag', title: 'Gestione POS (HDI/ARAG)', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', note: 'Note', dataEstinzione: 'Data Estinzione', incassato: 'Incassato' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', note: 'text', dataEstinzione: 'date' }, dataSource: 'pos_hdi_arag', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['note', 'dataEstinzione', 'incassato'] },
+        'bonifici_allianz': { type: 'bonifici_allianz', title: 'Gestione Bonifici (Allianz)', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', note: 'Note', dataEstinzione: 'Data Estinzione', incassato: 'Incassato' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', note: 'text', dataEstinzione: 'date' }, dataSource: 'bonifici_allianz', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['note', 'dataEstinzione', 'incassato'] },
+        'bonifici_vittoria': { type: 'bonifici_vittoria', title: 'Gestione Bonifici (Vittoria)', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', note: 'Note' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', note: 'text' }, dataSource: 'bonifici_vittoria', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['note'] },
         'riattivazioni_vittoria': { type: 'riattivazioni_vittoria', title: 'Gestione Riattivazioni Vittoria', columns: { contraente: 'CONTRAENTE', nPolizza: 'N° POLIZZA', targa: 'TARGA', dataSospensione: 'DATA SOSPENSIONE', dataRiattivazione: 'DATA RIATTIVAZIONE', note: 'NOTE', riattivata: 'RIATTIVATA' }, formFields: { contraente: 'text', nPolizza: 'text', targa: 'text', dataSospensione: 'date', dataRiattivazione: 'date', note: 'text' }, dataSource: 'riattivazioni_vittoria', filterByDateOn: 'dataSospensione', searchClientOn: 'contraente' },
         'promemoria': { type: 'promemoria', title: 'Gestione Promemoria', columns: { nota: 'NOTA PROMEMORIA', utente: 'UTENTE', data: 'DATA', fatto: 'FATTO' }, formFields: { data: 'date', utente: 'text', nota: 'textarea' }, dataSource: 'promemoria', filterByDateOn: 'data', searchClientOn: 'utente' }
     };
@@ -1166,6 +1298,10 @@
 
         const headerRow = thead.insertRow();
         const dateColumns = ['dataEstinzione', 'dataSospensione', 'dataRiattivazione', 'data', 'dataKey'];
+        const booleanFields = ['incassato', 'riattivata', 'abbuonoRegolato', 'fatto'];
+        const numericFields = ['importo', 'abbuoni'];
+        const editableForAuto = configTabellaCorrente.editableFieldsForAutomatic || [];
+
         for (const key in configTabellaCorrente.columns) {
             const th = document.createElement('th');
             th.textContent = configTabellaCorrente.columns[key];
@@ -1176,7 +1312,7 @@
         headerRow.appendChild(document.createElement('th')).textContent = 'Azioni';
 
         const dateKeySort = configTabellaCorrente.filterByDateOn;
-        dati.sort((a, b) => new Date(b[dateKeySort]) - new Date(a[dateKeySort]));
+        dati.sort((a, b) => new Date(b[dateKeySort] || 0) - new Date(a[dateKeySort] || 0));
 
         dati.forEach((d) => {
             const riga = tbody.insertRow();
@@ -1186,35 +1322,40 @@
                 const cell = riga.insertCell();
                 cell.dataset.property = key;
                 let content = d[key] || '';
-                
+                const isEditable = !d.isAutomatic || editableForAuto.includes(key);
+
                 if (dateColumns.includes(key)) cell.classList.add('col-date');
 
-                const booleanFields = ['incassato', 'riattivata', 'abbuonoRegolato', 'fatto'];
-
                 if (dateColumns.includes(key)) {
-                    cell.innerHTML = `<input type="date" value="${content}" onchange="salvaModificaGenerica(this)">`;
+                    cell.innerHTML = `<input type="date" value="${content}" onchange="salvaModificaGenerica(this)" ${!isEditable ? 'readonly style="background-color:#eee;"' : ''}>`;
                 } else if (booleanFields.includes(key)) {
-                    cell.innerHTML = `<input type="checkbox" ${content ? 'checked' : ''} onchange="salvaModificaGenerica(this)">`;
+                    cell.innerHTML = `<input type="checkbox" ${content ? 'checked' : ''} onchange="salvaModificaGenerica(this)" ${!isEditable ? 'disabled' : ''}>`;
                     cell.style.textAlign = 'center';
-                } else if (['importo', 'abbuoni'].includes(key)) {
-                    cell.textContent = (content || 0).toFixed(2);
-                    cell.contentEditable = true;
-                    cell.onblur = (e) => salvaModificaGenerica(e.target);
                 } else {
-                    cell.textContent = content;
-                    cell.contentEditable = true;
-                    cell.onblur = (e) => salvaModificaGenerica(e.target);
+                    if (numericFields.includes(key)) {
+                        cell.textContent = (parseFloat(content) || 0).toFixed(2);
+                    } else {
+                        cell.textContent = content;
+                    }
+                    if (isEditable) {
+                        cell.contentEditable = true;
+                        cell.onblur = (e) => salvaModificaGenerica(e.target);
+                    }
                 }
             }
             
             const cellaAzioni = riga.insertCell();
             cellaAzioni.style.textAlign = 'center';
-            cellaAzioni.innerHTML = `<button class="button-delete" onclick="cancellaMovimentoGenerico(this)">Elimina</button>`;
+            if (d.isAutomatic) {
+                cellaAzioni.innerHTML = `<i class="fa fa-lock" title="Generato da giornale cassa. Non eliminabile da qui."></i>`;
+            } else {
+                cellaAzioni.innerHTML = `<button class="button-delete" onclick="cancellaMovimentoGenerico(this)">Elimina</button>`;
+            }
             
             aggiornaStileRiga(riga, d);
         });
     }
-    
+
     async function salvaModificaGenerica(el) {
         const cell = el.closest('td');
         const riga = cell.closest('tr');
@@ -1282,7 +1423,8 @@
 
         let nuovoElemento = {
             createdBy: stato.datiUtente.displayName,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            isAutomatic: false // Marcato come manuale
         };
         
         for(const field in config.formFields) {
@@ -1296,10 +1438,23 @@
         document.getElementById('add-movimento-modal').style.display = 'none';
     }
     
-    // ... (Inserisci qui tutte le altre funzioni di utility non modificate: applicaFiltriTabella, resetFiltriTabella, aggiornaStileRiga, ecc.)
+    function applicaFiltriTabella() {
+        const anno = document.getElementById('generic-filtro-anno').value;
+        const mese = document.getElementById('generic-filtro-mese').value;
+        const clienteInput = document.getElementById('generic-filtro-cliente').value.toLowerCase();
+        const dateKey = configTabellaCorrente.filterByDateOn;
+        const clientKey = configTabellaCorrente.searchClientOn;
 
+        let datiFiltrati = datiTabellaCorrente;
+        if (anno !== 'tutti') datiFiltrati = datiFiltrati.filter(d => d[dateKey] && new Date(d[dateKey]).getFullYear() == anno);
+        if (mese !== 'tutti') datiFiltrati = datiFiltrati.filter(d => d[dateKey] && new Date(d[dateKey]).getMonth() == mese);
+        if (clienteInput) datiFiltrati = datiFiltrati.filter(d => d[clientKey] && String(d[clientKey]).toLowerCase().includes(clienteInput));
+        
+        popolaTabellaGenerica(datiFiltrati);
+    }
+    
     // ===============================================
-    // FUNZIONI DI UTILITY (invariate)
+    // FUNZIONI DI UTILITY (poche modifiche)
     // ===============================================
 
     function formatDate(date) {
@@ -1575,7 +1730,7 @@
     async function verificaChiusura() {
         const teorica = calcolaCassaTeorica();
         const fisica = calcolaConteggioFisico();
-        const differenza = teorica - fisica;
+        const differenza = fisica - teorica; // Cambiato per mostrare eccesso/difetto
         let result = {};
         if (Math.abs(differenza) < 0.01) {
             result = { text: `✅ I CONTI TORNANO! Differenza: € 0.00`, class: 'ok' };
@@ -1617,27 +1772,8 @@
         }
     }
 
-    // ... funzioni di utility per la stampa e gli alert (controllaRiattivazioni, ecc.)
-    function controllaRiattivazioni(riattivazioni = []) { /* logica ui... */ }
-    function controllaPromemoria(promemoria = []) { /* logica ui... */ }
     function stampaPersonalizzata() { /* logica ui... */ }
     
-    // Funzioni per la tabella generica
-    function applicaFiltriTabella() {
-        const anno = document.getElementById('generic-filtro-anno').value;
-        const mese = document.getElementById('generic-filtro-mese').value;
-        const clienteInput = document.getElementById('generic-filtro-cliente').value.toLowerCase();
-        const dateKey = configTabellaCorrente.filterByDateOn;
-        const clientKey = configTabellaCorrente.searchClientOn;
-
-        let datiFiltrati = datiTabellaCorrente;
-        if (anno !== 'tutti') datiFiltrati = datiFiltrati.filter(d => d[dateKey] && new Date(d[dateKey]).getFullYear() == anno);
-        if (mese !== 'tutti') datiFiltrati = datiFiltrati.filter(d => d[dateKey] && new Date(d[dateKey]).getMonth() == mese);
-        if (clienteInput) datiFiltrati = datiFiltrati.filter(d => d[clientKey] && d[clientKey].toLowerCase().includes(clienteInput));
-        
-        popolaTabellaGenerica(datiFiltrati);
-    }
-
     function resetFiltriTabella() {
         document.getElementById('generic-filtro-anno').value = 'tutti';
         document.getElementById('generic-filtro-mese').value = 'tutti';
@@ -1649,7 +1785,7 @@
         const annoSelect = document.getElementById('generic-filtro-anno');
         const meseSelect = document.getElementById('generic-filtro-mese');
         const dateKey = configTabellaCorrente.filterByDateOn;
-        const years = new Set(datiTabellaCorrente.map(d => new Date(d[dateKey]).getFullYear()));
+        const years = new Set(datiTabellaCorrente.map(d => d[dateKey] ? new Date(d[dateKey]).getFullYear() : null).filter(y => y));
         annoSelect.innerHTML = '<option value="tutti">Tutti</option>';
         Array.from(years).sort((a,b)=>b-a).forEach(y => annoSelect.innerHTML += `<option value="${y}">${y}</option>`);
         meseSelect.innerHTML = '<option value="tutti">Tutti</option>';
@@ -1687,4 +1823,4 @@
 
 </script>
 </body>
-</html
+</html>
