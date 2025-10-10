@@ -1,921 +1,796 @@
-!DOCTYPE html
-html lang=it
-head
-    meta charset=UTF-8
-    meta name=viewport content=width=device-width, initial-scale=1.0
-    titleGestione Cassa Collaborativatitle
-
-    link rel=manifest href=manifest.json
-    link rel=apple-touch-icon href=unnamed.jpg
-    meta name=theme-color content=#6c757d
-
-    script src=httpswww.gstatic.comfirebasejs8.10.1firebase-app.jsscript
-    script src=httpswww.gstatic.comfirebasejs8.10.1firebase-auth.jsscript
-    script src=httpswww.gstatic.comfirebasejs8.10.1firebase-firestore.jsscript
-    link rel=stylesheet href=httpscdnjs.cloudflare.comajaxlibsfont-awesome6.5.1cssall.min.css
-    style
-        root {
-            --primary-color #6c757d;
-            --primary-color-light #f8f9fa;
-            --primary-rgb 108, 117, 125;
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestione Cassa Collaborativa</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #6c757d;
+            --primary-color-light: #f8f9fa;
+            --primary-rgb: 108, 117, 125;
         }
-        body.theme-allianz { --primary-color #007bff; --primary-color-light #cce5ff; --primary-rgb 0, 123, 255; }
-        body.theme-hdi { --primary-color #28a745; --primary-color-light #d4edda; --primary-rgb 40, 167, 69; }
-        body.theme-vittoria { --primary-color #6f42c1; --primary-color-light #e2d9f3; --primary-rgb 111, 66, 193; }
-        body.theme-arag { --primary-color #ffc107; --primary-color-light #fff3cd; --primary-rgb 255, 193, 7; }
-        body.theme-helvetia { --primary-color #dc3545; --primary-color-light #f8d7da; --primary-rgb 220, 53, 69; }
+        body.theme-allianz { --primary-color: #007bff; --primary-color-light: #cce5ff; --primary-rgb: 0, 123, 255; }
+        body.theme-hdi { --primary-color: #28a745; --primary-color-light: #d4edda; --primary-rgb: 40, 167, 69; }
+        body.theme-vittoria { --primary-color: #6f42c1; --primary-color-light: #e2d9f3; --primary-rgb: 111, 66, 193; }
+        body.theme-arag { --primary-color: #ffc107; --primary-color-light: #fff3cd; --primary-rgb: 255, 193, 7; }
+        body.theme-helvetia { --primary-color: #dc3545; --primary-color-light: #f8d7da; --primary-rgb: 220, 53, 69; }
 
         body {
-            font-family -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-            background-color #f0f2f5; color #333; margin 0; padding 20px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5; color: #333; margin: 0; padding: 20px;
         }
         .container {
-            max-width 1400px;
-            margin auto; background #fff; padding 25px;
-            border-radius 8px; box-shadow 0 4px 12px rgba(0,0,0,0.1); display none;
+            max-width: 1400px;
+            margin: auto; background: #fff; padding: 25px;
+            border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: none;
         }
-        h1, h2, h3 { color var(--primary-color); }
-        h1 { border-bottom 3px solid var(--primary-color); padding-bottom 10px; }
+        h1, h2, h3 { color: var(--primary-color); }
+        h1 { border-bottom: 3px solid var(--primary-color); padding-bottom: 10px; }
         
-        .grid-container { display grid; grid-template-columns 1fr 1fr; gap 25px; }
-        .box { padding 20px; border 1px solid #ddd; border-radius 8px; background-color #fff; }
+        .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; }
+        .box { padding: 20px; border: 1px solid #ddd; border-radius: 8px; background-color: #fff; }
 
         #box-inizio-giornata {
-            background-image linear-gradient(to top right, rgba(var(--primary-rgb), 0.02), rgba(var(--primary-rgb), 0.08));
+            background-image: linear-gradient(to top right, rgba(var(--primary-rgb), 0.02), rgba(var(--primary-rgb), 0.08));
         }
         #form-movimento-fieldset .box {
-            background-image linear-gradient(to top right, #ffffff, rgba(var(--primary-rgb), 0.06));
+            background-image: linear-gradient(to top right, #ffffff, rgba(var(--primary-rgb), 0.06));
         }
         #box-conteggio-cassa {
-            background-image linear-gradient(to top right, #ffffff, rgba(var(--primary-rgb), 0.06));
+            background-image: linear-gradient(to top right, #ffffff, rgba(var(--primary-rgb), 0.06));
         }
         #box-riepilogo-movimenti {
-            background-image linear-gradient(to top right, #ffffff, rgba(var(--primary-rgb), 0.09));
+            background-image: linear-gradient(to top right, #ffffff, rgba(var(--primary-rgb), 0.09));
         }
         #box-provvigioni {
-             background-image linear-gradient(to top right, #ffffff, rgba(var(--primary-rgb), 0.07));
+             background-image: linear-gradient(to top right, #ffffff, rgba(var(--primary-rgb), 0.07));
         }
         #box-verifica-finale {
-            background-image linear-gradient(to top right, rgba(var(--primary-rgb), 0.05), rgba(var(--primary-rgb), 0.15));
+            background-image: linear-gradient(to top right, rgba(var(--primary-rgb), 0.05), rgba(var(--primary-rgb), 0.15));
         }
         
         input, select, button {
-            width 100%; padding 10px; margin-bottom 10px;
-            border-radius 4px; border 1px solid #ccc; box-sizing border-box; font-size 1rem;
+            width: 100%; padding: 10px; margin-bottom: 10px;
+            border-radius: 4px; border: 1px solid #ccc; box-sizing: border-box; font-size: 1rem;
         }
         button {
-            background-color var(--primary-color); color white; border none;
-            cursor pointer; font-weight bold; transition background-color 0.2s;
+            background-color: var(--primary-color); color: white; border: none;
+            cursor: pointer; font-weight: bold; transition: background-color 0.2s;
         }
-        button.button-save { background-color #28a745; font-size 1.1rem; padding 12px;}
-        buttonhover { filter brightness(90%); }
-        buttondisabled, fieldsetdisabled button { background-color #ccc; cursor not-allowed; }
-        fieldset { border none; padding 0; margin 0; }
-        fieldsetdisabled { opacity 0.6; }
-        .button-secondary { background-color #6c757d; }
-        .button-edit { background-color #ffc107; color #212529; font-size 0.8rem; padding 5px 8px; width auto; margin 2px;}
-        .button-delete { background-color #dc3545; font-size 0.8rem; padding 5px 8px; width auto; margin 2px;}
+        button.button-save { background-color: #28a745; font-size: 1.1rem; padding: 12px;}
+        button:hover { filter: brightness(90%); }
+        button:disabled, fieldset:disabled button { background-color: #ccc; cursor: not-allowed; }
+        fieldset { border: none; padding: 0; margin: 0; }
+        fieldset:disabled { opacity: 0.6; }
+        .button-secondary { background-color: #6c757d; }
+        .button-edit { background-color: #ffc107; color: #212529; font-size: 0.8rem; padding: 5px 8px; width: auto; margin: 2px;}
+        .button-delete { background-color: #dc3545; font-size: 0.8rem; padding: 5px 8px; width: auto; margin: 2px;}
 
-        table { width 100%; border-collapse collapse; margin-top 20px; font-size 0.9rem; table-layout fixed; }
-        th, td { padding 8px; border 1px solid #ddd; text-align left; word-wrap break-word; }
-        th { background-color var(--primary-color-light); }
-        .provvigione-editabilehover { background-color #fff3cd; cursor pointer; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.9rem; table-layout: fixed; }
+        th, td { padding: 8px; border: 1px solid #ddd; text-align: left; word-wrap: break-word; }
+        th { background-color: var(--primary-color-light); }
+        .provvigione-editabile:hover { background-color: #fff3cd; cursor: pointer; }
         
         .riepilogo-totali, .risultato-verifica {
-            font-size 1.2rem; font-weight bold; padding 15px; margin-top 15px;
-            border-radius 5px; background-color var(--primary-color-light); border-left 5px solid var(--primary-color);
+            font-size: 1.2rem; font-weight: bold; padding: 15px; margin-top: 15px;
+            border-radius: 5px; background-color: var(--primary-color-light); border-left: 5px solid var(--primary-color);
         }
-        .risultato-verifica.ok { color #155724; background-color #d4edda; border-left-color #28a745; }
-        .risultato-verifica.errore { color #721c24; background-color #f8d7da; border-left-color #dc3545; }
+        .risultato-verifica.ok { color: #155724; background-color: #d4edda; border-left-color: #28a745; }
+        .risultato-verifica.errore { color: #721c24; background-color: #f8d7da; border-left-color: #dc3545; }
         
-        .decade-grid { display grid; grid-template-columns 1fr 1fr; gap 10px; }
-        .decade-grid div { padding 10px; background #f8f9fa; border-radius 4px; }
-        .decade-grid strong { color var(--primary-color); }
+        .decade-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .decade-grid div { padding: 10px; background: #f8f9fa; border-radius: 4px; }
+        .decade-grid strong { color: var(--primary-color); }
 
         .modal-overlay {
-            position fixed; top 0; left 0; width 100%; height 100%;
-            background rgba(0,0,0,0.7); display flex;
-            justify-content center; align-items center; z-index 1000;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); display: flex;
+            justify-content: center; align-items: center; z-index: 1000;
         }
         
         #company-selector-modal .modal-overlay-background {
-            background radial-gradient(circle, #6c757d 0%, #212529 100%);
-            backdrop-filter blur(3px);
+            background: radial-gradient(circle, #6c757d 0%, #212529 100%);
+            backdrop-filter: blur(3px);
         }
-        .home-header {
-            position absolute;
-            top 20px;
-            left 20px;
-            right 20px;
-            z-index 1001;
-            display flex;
-            justify-content space-between;
-            align-items flex-start;
-        }
-        .backup-container {
-            display flex; flex-wrap wrap; gap 10px; justify-content flex-end;
-        }
-        .header-backup-button {
-            width auto; padding 8px 15px; font-size 0.9rem;
-            background-color #6c757d; border-radius 5px; margin-bottom 0;
-        }
-        .logout-button {
-            background-color #dc3545 !important;
-        }
-
         #company-selector-modal .modal-wrapper {
-            display flex; gap 40px; align-items flex-start; padding-top 60px;  Space for header 
+            display: flex; gap: 40px; align-items: flex-start;
         }
         #company-selector-modal .modal-content {
-            background linear-gradient(to bottom, #f8f9fa, #ffffff); border-radius 12px;
-            box-shadow 0 8px 30px rgba(0,0,0,0.2); border 1px solid rgba(255, 255, 255, 0.1);
-            padding 30px 30px; display flex; flex-direction column;
-            justify-content center; align-items center;
+            background: linear-gradient(to bottom, #f8f9fa, #ffffff); border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.2); border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 30px 30px; display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
         }
         #company-selector-modal .company-button {
-            width 300px; margin 15px 0; font-weight bold; padding 30px 10px;
-            border-bottom 3px solid rgba(0,0,0,0.25); border-radius 8px;
-            background-image linear-gradient(to top, rgba(0,0,0,0.2), transparent 40%);
-            transition all 0.2s ease-in-out; font-size 1.4rem;
-            text-shadow 1px 1px 2px rgba(0,0,0,0.4);
+            width: 300px; margin: 15px 0; font-weight: bold; padding: 30px 10px;
+            border-bottom: 3px solid rgba(0,0,0,0.25); border-radius: 8px;
+            background-image: linear-gradient(to top, rgba(0,0,0,0.2), transparent 40%);
+            transition: all 0.2s ease-in-out; font-size: 1.4rem;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
         }
-        #company-selector-modal .company-buttonhover {
-            transform translateY(-3px); box-shadow 0 6px 20px rgba(0,0,0,0.35); filter brightness(1.1);
+        #company-selector-modal .company-button:hover {
+            transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.35); filter: brightness(1.1);
         }
         
         #utility-section {
-            background linear-gradient(145deg, #e6e6e6, #ffffff);
+            background: linear-gradient(145deg, #e6e6e6, #ffffff);
         }
         .utility-grid-container {
-            display grid; grid-template-columns repeat(2, 1fr);
-            gap 20px; padding 20px;
+            display: grid; grid-template-columns: repeat(2, 1fr);
+            gap: 20px; padding: 20px;
         }
         .utility-button {
-            width 150px; height 105px;
-            margin 0; padding 10px;
-            border-radius 15px; border 1px solid #b0b0b0;
-            background linear-gradient(145deg, #f0f0f0, #cacaca);
-            box-shadow 7px 7px 15px #babecc, -7px -7px 15px #ffffff;
-            color #333; text-shadow 1px 1px 1px #fff;
-            font-size 1rem; font-weight bold;
-            display flex; flex-direction column;
-            justify-content center; align-items center;
-            gap 10px; cursor pointer;
-            transition all 0.2s ease-in-out;
+            width: 150px; height: 105px;
+            margin: 0; padding: 10px;
+            border-radius: 15px; border: 1px solid #b0b0b0;
+            background: linear-gradient(145deg, #f0f0f0, #cacaca);
+            box-shadow: 7px 7px 15px #babecc, -7px -7px 15px #ffffff;
+            color: #333; text-shadow: 1px 1px 1px #fff;
+            font-size: 1rem; font-weight: bold;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            gap: 10px; cursor: pointer;
+            transition: all 0.2s ease-in-out;
         }
-        .utility-buttonhover {
-            box-shadow 4px 4px 10px #babecc, -4px -4px 10px #ffffff;
-            transform scale(0.98);
-            color #007bff;
+        .utility-button:hover {
+            box-shadow: 4px 4px 10px #babecc, -4px -4px 10px #ffffff;
+            transform: scale(0.98);
+            color: #007bff;
         }
-        .utility-buttonactive {
-            box-shadow inset 5px 5px 10px #babecc, inset -5px -5px 10px #ffffff;
-            transform scale(0.95);
-            color #28a745;
+        .utility-button:active {
+            box-shadow: inset 5px 5px 10px #babecc, inset -5px -5px 10px #ffffff;
+            transform: scale(0.95);
+            color: #28a745;
         }
         .utility-button i {
-            color #555; transition color 0.2s ease-in-out;
+            color: #555; transition: color 0.2s ease-in-out;
         }
-        .utility-buttonhover i { color #007bff; }
-        .utility-buttonactive i { color #28a745; }
+        .utility-button:hover i { color: #007bff; }
+        .utility-button:active i { color: #28a745; }
         
+        .backup-container {
+            position: absolute; top: 30px; right: 40px;
+            z-index: 1001; display: flex; gap: 10px;
+        }
+        .header-backup-button {
+            width: auto; padding: 8px 15px; font-size: 0.9rem;
+            background-color: #17a2b8; border-radius: 5px; margin-bottom: 0;
+        }
+        .logout-container {
+            position: absolute;
+            top: 30px;
+            left: 40px;
+            z-index: 1001;
+        }
+        .logout-button {
+            background-color: #dc3545 !important;
+        }
+
         #alerts-sidebar {
-            position fixed;
-            left 20px;
-            top 80px;  Adjusted to not overlap with header 
-            z-index 1001;
-            display flex;
-            flex-direction column;
-            gap 20px;
-            width 350px;
+            position: fixed;
+            left: 20px;
+            top: 80px; /* Adjusted to not overlap with new logout button */
+            z-index: 1001;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 350px;
         }
 
         #alerts-sidebar .alert-box {
-            width 100%;
-            max-width 100%;
-            margin-top 0;
+            width: 100%;
+            max-width: 100%;
+            margin-top: 0;
         }
         .alert-box {
-            display none;
-            border-radius 10px;
-            padding 20px;
-            box-shadow 0 4px 15px rgba(0,0,0,0.15);
-            max-height 40vh;
-            overflow-y auto;
+            display: none;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            max-height: 40vh;
+            overflow-y: auto;
         }
-        .alert-box h3 { margin-top 0; padding-bottom 10px; }
-        .alert-box ul { list-style none; padding 0; margin 0; }
-        .alert-box li { padding 8px; border-bottom 1px dotted #ccc; font-size 1.1rem; }
-        .alert-box lilast-child { border-bottom none; }
+        .alert-box h3 { margin-top: 0; padding-bottom: 10px; }
+        .alert-box ul { list-style: none; padding: 0; margin: 0; }
+        .alert-box li { padding: 8px; border-bottom: 1px dotted #ccc; font-size: 1.1rem; }
+        .alert-box li:last-child { border-bottom: none; }
 
         #riattivazioni-alert-container {
-            background-color #fff3cd; color #856404; border 2px solid #ffeeba;
+            background-color: #fff3cd; color: #856404; border: 2px solid #ffeeba;
         }
-        #riattivazioni-alert-container h3 { color #856404; border-bottom 1px solid #856404; }
-        #riattivazioni-alert-container strong { color #6f42c1; }
+        #riattivazioni-alert-container h3 { color: #856404; border-bottom: 1px solid #856404; }
+        #riattivazioni-alert-container strong { color: #6f42c1; }
 
         #promemoria-alert-container {
-             background-color #d1ecf1; color #0c5460; border 2px solid #bee5eb;
+             background-color: #d1ecf1; color: #0c5460; border: 2px solid #bee5eb;
         }
-        #promemoria-alert-container h3 { color #0c5460; border-bottom 1px solid #0c5460; }
-        #promemoria-alert-container strong { color #007bff; }
+        #promemoria-alert-container h3 { color: #0c5460; border-bottom: 1px solid #0c5460; }
+        #promemoria-alert-container strong { color: #007bff; }
 
 
-        .modal-full { padding 20px; align-items flex-start; overflow-y auto; }
+        .modal-full { padding: 20px; align-items: flex-start; overflow-y: auto; }
         .modal-full .modal-content-full {
-            width 95%; max-width 1800px; background #fff;
-            padding 20px; border-radius 8px; text-align left; margin-top 2vh;
+            width: 95%; max-width: 1800px; background: #fff;
+            padding: 20px; border-radius: 8px; text-align: left; margin-top: 2vh;
         }
         .modal-toolbar {
-            display flex; justify-content space-between; align-items center;
-            padding-bottom 15px; border-bottom 2px solid #ccc; margin-bottom 15px;
-            flex-wrap wrap; gap 15px;
+            display: flex; justify-content: space-between; align-items: center;
+            padding-bottom: 15px; border-bottom: 2px solid #ccc; margin-bottom: 15px;
+            flex-wrap: wrap; gap: 15px;
         }
-        .modal-toolbar .filter-group { display flex; align-items center; gap 10px; flex-wrap wrap; }
-        .modal-toolbar .action-group { display flex; align-items center; gap 10px; }
+        .modal-toolbar .filter-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .modal-toolbar .action-group { display: flex; align-items: center; gap: 10px; }
         .modal-toolbar .filter-group button, .modal-toolbar .filter-group select, .modal-toolbar .filter-group input, .modal-toolbar .action-group button {
-            width auto; margin-bottom 0; padding 8px;
+            width: auto; margin-bottom: 0; padding: 8px;
         }
-        .generic-table td[contenteditable=true]hover { background-color #fff3cd; cursor text; }
-        .generic-table input, .generic-table select { padding 4px; font-size 0.9rem; border-radius 3px; border 1px solid #ccc;}
-        .generic-table input[type=checkbox] { width auto; transform scale(1.2); }
-        .generic-table th.col-note, .generic-table td.col-note { width 20%; }
-        .generic-table th.col-date, .generic-table td.col-date { min-width 165px; }
-        .generic-table th.col-origine, .generic-table td.col-origine { width 60px; text-align center;}
+        .generic-table td[contenteditable="true"]:hover { background-color: #fff3cd; cursor: text; }
+        .generic-table input, .generic-table select { padding: 4px; font-size: 0.9rem; border-radius: 3px; border: 1px solid #ccc;}
+        .generic-table input[type="checkbox"] { width: auto; transform: scale(1.2); }
+        .generic-table th.col-note, .generic-table td.col-note { width: 20%; }
+        .generic-table th.col-date, .generic-table td.col-date { min-width: 165px; }
+        .generic-table th.col-origine, .generic-table td.col-origine { width: 60px; text-align: center;}
 
-        .riga-incassato { background-color #d4edda !important; text-decoration line-through; color #555;}
-        .riga-vecchio { background-color #fff3cd; }
-        .riga-critico { background-color #f8d7da; }
+        .riga-incassato { background-color: #d4edda !important; text-decoration: line-through; color: #555;}
+        .riga-vecchio { background-color: #fff3cd; }
+        .riga-critico { background-color: #f8d7da; }
 
         .save-notification {
-            display none; padding 10px 15px; border-radius 5px; text-align center;
-            font-weight bold; margin -10px auto 10px auto;
-            opacity 0; transition opacity 0.5s ease-in-out;
-            color white;
+            display: none; padding: 10px 15px; border-radius: 5px; text-align: center;
+            font-weight: bold; margin: -10px auto 10px auto;
+            opacity: 0; transition: opacity 0.5s ease-in-out;
+            color: white;
         }
-        .save-notification.success { background-color #28a745; }
-        .save-notification.error { background-color #dc3545; }
+        .save-notification.success { background-color: #28a745; }
+        .save-notification.error { background-color: #dc3545; }
         
         .app-header {
-            display flex; flex-wrap wrap; justify-content space-between; align-items center;
-            padding 10px 20px; background-color #f8f9fa; border-radius 8px; margin-bottom 20px; gap 10px;
+            display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
+            padding: 10px 20px; background-color: #f8f9fa; border-radius: 8px; margin-bottom: 20px; gap: 10px;
         }
-        .app-header .header-group { display flex; align-items center; gap 10px; }
+        .app-header .header-group { display: flex; align-items: center; gap: 10px; }
         
-        #status-indicator { font-weight bold; padding 5px 10px; border-radius 5px; color white; }
-        #status-indicator.synced { background-color #28a745; }
-        #status-indicator.saving { background-color #ffc107; color black; }
-        #status-indicator.error { background-color #dc3545; }
+        #status-indicator { font-weight: bold; padding: 5px 10px; border-radius: 5px; color: white; }
+        #status-indicator.synced { background-color: #28a745; }
+        #status-indicator.saving { background-color: #ffc107; color: black; }
+        #status-indicator.error { background-color: #dc3545; }
         
-        .col-data-mensile { display none; }
-        body.vista-mensile .col-data-mensile { display table-cell; }
-        body.vista-mensile .col-impatto-cassa, body.vista-mensile .col-cassa-teorica { display none; }
+        .col-data-mensile { display: none; }
+        body.vista-mensile .col-data-mensile { display: table-cell; }
+        body.vista-mensile .col-impatto-cassa, body.vista-mensile .col-cassa-teorica { display: none; }
         
         #add-movimento-form label {
-            font-weight bold; margin-top 15px;
-            font-size 1.1rem; display block; color #333;
+            font-weight: bold; margin-top: 15px;
+            font-size: 1.1rem; display: block; color: #333;
         }
-        #add-movimento-title { font-size 1.8rem; color #333; }
+        #add-movimento-title { font-size: 1.8rem; color: #333; }
 
-        #divIncassoMultiplo { border 2px dashed var(--primary-color); padding 15px; margin-top 15px; border-radius 5px; }
-        #divIncassoMultiplo hr { margin 20px 0; }
+        #divIncassoMultiplo { border: 2px dashed var(--primary-color); padding: 15px; margin-top: 15px; border-radius: 5px; }
+        #divIncassoMultiplo hr { margin: 20px 0; }
         
         .riporto-toggle-container {
-            display flex; align-items center;
-            justify-content flex-end;
-            gap 10px;
-            margin-bottom 10px;
+            display: flex; align-items: center;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-bottom: 10px;
         }
         .switch-label {
-            font-weight bold; color var(--primary-color);
+            font-weight: bold; color: var(--primary-color);
         }
         .switch {
-            position relative; display inline-block;
-            width 60px; height 34px;
+            position: relative; display: inline-block;
+            width: 60px; height: 34px;
         }
         .switch input {
-            opacity 0; width 0; height 0;
+            opacity: 0; width: 0; height: 0;
         }
         .slider {
-            position absolute; cursor pointer;
-            top 0; left 0; right 0; bottom 0;
-            background-color #ccc;
-            transition .4s;
+            position: absolute; cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
         }
-        .sliderbefore {
-            position absolute; content ;
-            height 26px; width 26px;
-            left 4px; bottom 4px;
-            background-color white;
-            transition .4s;
+        .slider:before {
+            position: absolute; content: "";
+            height: 26px; width: 26px;
+            left: 4px; bottom: 4px;
+            background-color: white;
+            transition: .4s;
         }
-        inputchecked + .slider { background-color #28a745; }
-        inputnot(checked) + .slider { background-color #007bff; }
-        inputchecked + .sliderbefore { transform translateX(26px); }
-        .slider.round { border-radius 34px; }
-        .slider.roundbefore { border-radius 50%; }
+        input:checked + .slider { background-color: #28a745; }
+        input:not(:checked) + .slider { background-color: #007bff; }
+        input:checked + .slider:before { transform: translateX(26px); }
+        .slider.round { border-radius: 34px; }
+        .slider.round:before { border-radius: 50%; }
 
         #auth-container {
-            max-width 400px; margin 50px auto; padding 30px;
-            background #fff; border-radius 8px; box-shadow 0 4px 12px rgba(0,0,0,0.15);
+            max-width: 400px; margin: 50px auto; padding: 30px;
+            background: #fff; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
-        #auth-container h2 { text-align center; }
-        .auth-form { display none; }
-        .auth-form.active { display block; }
-        #auth-container .form-toggle { text-align center; margin-top 15px; }
-        #auth-container .form-toggle a { color var(--primary-color); cursor pointer; text-decoration underline; }
-        #auth-error { color #dc3545; text-align center; margin-top 10px; font-weight bold; }
-        #user-info { font-weight bold; color #333; background-color #e9ecef; padding 8px 12px; border-radius 5px; }
+        #auth-container h2 { text-align: center; }
+        .auth-form { display: none; }
+        .auth-form.active { display: block; }
+        #auth-container .form-toggle { text-align: center; margin-top: 15px; }
+        #auth-container .form-toggle a { color: var(--primary-color); cursor: pointer; text-decoration: underline; }
+        #auth-error { color: #dc3545; text-align: center; margin-top: 10px; font-weight: bold; }
+        #user-info { font-weight: bold; color: #333; background-color: #e9ecef; padding: 8px 12px; border-radius: 5px; }
         
         .fixed-color-scheme h2,
         .fixed-color-scheme h3,
         .fixed-color-scheme th {
-            color #36454F !important;
+            color: #36454F !important;
         }
         .fixed-color-scheme h2 {
-             text-shadow 1px 1px 3px rgba(0,0,0,0.3), -1px -1px 1px rgba(255,255,255,0.7);
+             text-shadow: 1px 1px 3px rgba(0,0,0,0.3), -1px -1px 1px rgba(255,255,255,0.7);
         }
 
         #print-layout {
-            display none;
+            display: none;
         }
 
         @page {
-            size A4 landscape;
-            margin 20mm;
+            size: A4 landscape;
+            margin: 20mm;
         }
 
         @media print {
             body {
-                -webkit-print-color-adjust exact;
-                print-color-adjust exact;
-                background-color #fff;
-                color #000;
-                margin 0;
-                padding 0;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                background-color: #fff;
+                color: #000;
+                margin: 0;
+                padding: 0;
             }
 
-            body  not(#print-layout) {
-                display none !important;
+            body > *:not(#print-layout) {
+                display: none !important;
             }
             
             #print-layout {
-                display block !important;
+                display: block !important;
             }
 
             .print-page {
-                page-break-after always;
-                break-after page;
+                page-break-after: always;
+                break-after: page;
             }
-            .print-pagelast-child {
-                page-break-after avoid;
-                break-after avoid;
+            .print-page:last-child {
+                page-break-after: avoid;
+                break-after: avoid;
             }
             
             .print-header {
-                display flex;
-                justify-content space-between;
-                align-items center;
-                border-bottom 2px solid #333;
-                margin-bottom 20px;
-                padding-bottom 10px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 2px solid #333;
+                margin-bottom: 20px;
+                padding-bottom: 10px;
             }
             .print-header h1, .print-header h2 {
-                font-size 1.4rem;
-                margin 0;
-                color #000 !important;
-                font-family -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+                font-size: 1.4rem;
+                margin: 0;
+                color: #000 !important;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             }
 
             .box, .container {
-                box-shadow none !important;
-                border 1px solid #ccc !important;
-                background-image none !important;
-                padding 15px;
+                box-shadow: none !important;
+                border: 1px solid #ccc !important;
+                background-image: none !important;
+                padding: 15px;
             }
             
             h1, h2, h3, th, strong {
-                color #000 !important;
-                text-shadow none !important;
+                color: #000 !important;
+                text-shadow: none !important;
             }
             .riepilogo-totali {
-                border-left-width 3px;
-                font-size 1.1rem;
+                border-left-width: 3px;
+                font-size: 1.1rem;
             }
             table {
-                font-size 0.8rem;
-                width 100%;
-                table-layout auto !important;  Allow table to adjust in print 
+                font-size: 0.8rem;
+                width: 100%;
             }
             th, td {
-                padding 6px;
-            }
-            
-             RIPRISTINO STILI TABELLA PER LA STAMPA 
-            #tabellaMovimenti thead, .generic-table thead {
-                display table-header-group !important;
-            }
-            #tabellaMovimenti tr, .generic-table tr {
-                display table-row !important;
-                margin-bottom 0;
-                border none;
-                box-shadow none;
-                padding 0;
-            }
-            #tabellaMovimenti td, .generic-table td {
-                display table-cell !important;
-                text-align left;
-                border 1px solid #ccc !important;
-                padding 6px !important;
-                position static;
-            }
-            #tabellaMovimenti tdbefore, .generic-table tdbefore {
-                display none !important;
+                padding: 6px;
             }
 
             .print-page .conteggio-grid {
-                display grid;
-                grid-template-columns 1fr 1fr;
-                gap 20px;
-                margin-bottom 10px;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 20px;
+                margin-bottom: 10px;
             }
 
             .print-page .conteggio-colonna h3 {
-                font-size 1.1rem;
-                margin-bottom 8px;
-                border-bottom 1px solid #ccc;
-                padding-bottom 4px;
+                font-size: 1.1rem;
+                margin-bottom: 8px;
+                border-bottom: 1px solid #ccc;
+                padding-bottom: 4px;
             }
 
             .print-page #conteggioBanconote div,
             .print-page #conteggioMonete div {
-                grid-template-columns 1fr 1.5fr 1.5fr;
-                gap 4px;
-                margin-bottom 3px;
-                font-size 0.75rem;
-                align-items center;
+                grid-template-columns: 1fr 1.5fr 1.5fr;
+                gap: 4px;
+                margin-bottom: 3px;
+                font-size: 0.75rem;
+                align-items: center;
             }
             .print-page #conteggioBanconote div input,
             .print-page #conteggioMonete div input,
             .print-page #box-conteggio-assegni input {
-                padding 2px 4px;
-                font-size 0.75rem;
-                margin-bottom 2px;
+                padding: 2px 4px;
+                font-size: 0.75rem;
+                margin-bottom: 2px;
             }
             .print-page #box-conteggio-assegni .button-delete {
-                display none;
+                display: none;
             }
             .print-page .risultato-verifica {
-                margin-top 15px;
-                padding 10px;
-                font-size 1rem;
+                margin-top: 15px;
+                padding: 10px;
+                font-size: 1rem;
             }
         }
+    </style>
+</head>
+<body id="app-body">
+    <input type="file" id="vecchio-backup-input" accept=".json" style="display: none;">
+
+    <div id="auth-container">
+        <h2>Gestione Cassa</h2>
         
-         Stili per la visualizzazione mobile (Responsive) 
-        @media (max-width 768px) {
-            body {
-                padding 5px;
-            }
-            .container {
-                padding 10px;
-            }
-            .grid-container {
-                grid-template-columns 1fr;  Una sola colonna 
-                gap 15px; 
-            }
-            .app-header {
-                flex-direction column; 
-                align-items flex-start;
-            }
-            h1, h2 {
-                font-size 1.4rem;
-            }
-            .home-header {
-                flex-direction column;
-                align-items center;
-                gap 15px;
-                position static;
-                padding 10px;
-            }
-            .home-header .logout-container, .home-header .backup-container {
-                position static;
-                width 100%;
-                display flex;
-                justify-content center;
-            }
-            #company-selector-modal .modal-wrapper {
-                flex-direction column;
-                overflow-y auto;
-                height calc(90vh - 80px);  Adjust height for header 
-                padding-top 10px;
-                align-items center;  Center content 
-            }
-            #alerts-sidebar {
-                display none;  Hide sidebar on mobile for simplicity 
-            }
-            
-             Stili per rendere le tabelle a card su mobile 
-            #tabellaMovimenti thead, .generic-table thead {
-                display none;
-            }
+        <div id="login-form" class="auth-form active">
+            <h3>Accedi</h3>
+            <form onsubmit="event.preventDefault(); loginUser();">
+                <label for="login-email">Email:</label>
+                <input type="email" id="login-email" required>
+                <label for="login-password">Password:</label>
+                <input type="password" id="login-password" required>
+                <button type="submit">Login</button>
+            </form>
+            <div class="form-toggle">
+                Non hai un account? <a onclick="toggleAuthForms()">Registrati</a>
+            </div>
+        </div>
 
-            #tabellaMovimenti tr, .generic-table tr {
-                display block;
-                margin-bottom 15px;
-                border 1px solid #ddd;
-                border-radius 5px;
-                box-shadow 0 2px 4px rgba(0,0,0,0.05);
-                padding 5px;
-            }
-            #tabellaMovimenti trnth-child(even), .generic-table trnth-child(even) {
-                background-color transparent;  Resetta lo sfondo alternato 
-            }
+        <div id="register-form" class="auth-form">
+            <h3>Crea Account</h3>
+            <form onsubmit="event.preventDefault(); registerUser();">
+                <label for="register-username">Nome Utente:</label>
+                <input type="text" id="register-username" required>
+                <label for="register-email">Email:</label>
+                <input type="email" id="register-email" required>
+                <label for="register-password">Password:</label>
+                <input type="password" id="register-password" required minlength="6">
+                <button type="submit">Registrati</button>
+            </form>
+            <div class="form-toggle">
+                Hai già un account? <a onclick="toggleAuthForms()">Accedi</a>
+            </div>
+        </div>
+        <div id="auth-error"></div>
+    </div>
 
-            #tabellaMovimenti td, .generic-table td {
-                display block;
-                text-align right;
-                border none;
-                border-bottom 1px dotted #ccc;
-                padding-left 50%;  Spazio per l'etichetta 
-                position relative;
-            }
-            #tabellaMovimenti tdlast-child, .generic-table tdlast-child {
-                border-bottom none;
-            }
 
-            #tabellaMovimenti tdbefore, .generic-table tdbefore {
-                content attr(data-label);
-                position absolute;
-                left 6px;
-                width 45%;
-                padding-right 10px;
-                white-space nowrap;
-                text-align left;
-                font-weight bold;
-            }
-            .generic-table td.col-origine {
-                padding-left 0;
-                text-align center;
-            }
-            .generic-table td.col-originebefore {
-                display none;  L'icona è già chiara 
-            }
-        }
-    style
-head
-body id=app-body
-    input type=file id=vecchio-backup-input accept=.json style=display none;
-
-    div id=auth-container
-        h2Gestione Cassah2
+    <div class="modal-overlay" id="company-selector-modal" style="display: none;">
+        <div class="modal-overlay-background"></div>
         
-        div id=login-form class=auth-form active
-            h3Accedih3
-            form onsubmit=event.preventDefault(); loginUser();
-                label for=login-emailEmaillabel
-                input type=email id=login-email required
-                label for=login-passwordPasswordlabel
-                input type=password id=login-password required
-                button type=submitLoginbutton
-            form
-            div class=form-toggle
-                Non hai un account a onclick=toggleAuthForms()Registratia
-            div
-        div
+        <div class="logout-container">
+            <button class="header-backup-button logout-button" onclick="logoutUser()">Logout</button>
+        </div>
 
-        div id=register-form class=auth-form
-            h3Crea Accounth3
-            form onsubmit=event.preventDefault(); registerUser();
-                label for=register-usernameNome Utentelabel
-                input type=text id=register-username required
-                label for=register-emailEmaillabel
-                input type=email id=register-email required
-                label for=register-passwordPasswordlabel
-                input type=password id=register-password required minlength=6
-                button type=submitRegistratibutton
-            form
-            div class=form-toggle
-                Hai già un account a onclick=toggleAuthForms()Accedia
-            div
-        div
-        div id=auth-errordiv
-    div
+        <div id="alerts-sidebar">
+           <div id="riattivazioni-alert-container" class="alert-box">
+                <h3><i class="fas fa-calendar-check"></i> Promemoria Riattivazioni Vittoria</h3>
+                <ul id="riattivazioni-alert-list"></ul>
+           </div>
+            <div id="promemoria-alert-container" class="alert-box">
+                <h3><i class="fas fa-bell"></i> Promemoria di Oggi</h3>
+                <ul id="promemoria-alert-list"></ul>
+           </div>
+        </div>
 
+        <div class="backup-container">
+            <button class="header-backup-button" onclick="esportaBackup()"><i class="fa fa-download"></i> Esporta</button>
+            <button class="header-backup-button" onclick="importaBackup()"><i class="fa fa-upload"></i> Importa</button>
+            <button class="header-backup-button" onclick="sincronizzaDatiSecondari()" style="background-color: #17a2b8;"><i class="fas fa-sync-alt"></i> Sincronizza Dati</button>
+            <button class="header-backup-button" onclick="convertiVecchioBackup()" style="background-color: #dc3545;"><i class="fas fa-magic"></i> Converti Backup</button>
+        </div>
 
-    div class=modal-overlay id=company-selector-modal style=display none;
-        div class=modal-overlay-backgrounddiv
-        
-        div class=home-header
-            div class=logout-container
-                button class=header-backup-button logout-button onclick=logoutUser()Logoutbutton
-            div
-            div class=backup-container
-                button class=header-backup-button onclick=esportaBackup() style=background-color #007bff;i class=fa fa-downloadi Esportabutton
-                button class=header-backup-button onclick=importaBackup() style=background-color #28a745;i class=fa fa-uploadi Importabutton
-                button class=header-backup-button onclick=sincronizzaDatiSecondari() style=background-color #17a2b8;i class=fas fa-sync-alti Sincronizzabutton
-                button class=header-backup-button onclick=convertiVecchioBackup() style=background-color #ffc107; color #212529;i class=fas fa-magici Convertibutton
-            div
-        div
-
-        div id=alerts-sidebar
-           div id=riattivazioni-alert-container class=alert-box
-                h3i class=fas fa-calendar-checki Promemoria Riattivazioni Vittoriah3
-                ul id=riattivazioni-alert-listul
-           div
-            div id=promemoria-alert-container class=alert-box
-                h3i class=fas fa-belli Promemoria di Oggih3
-                ul id=promemoria-alert-listul
-           div
-        div
-
-        div class=modal-wrapper
-            div class=modal-content fixed-color-scheme
-                h2Seleziona la Compagniah2
-                button class=company-button onclick=inizializzaApp('Allianz') style=background-color#007bffAllianzbutton
-                button class=company-button onclick=inizializzaApp('HDI') style=background-color#28a745HDIbutton
-                button class=company-button onclick=inizializzaApp('Vittoria') style=background-color#6f42c1Vittoriabutton
-                button class=company-button onclick=inizializzaApp('ARAG') style=background-color#ffc107ARAGbutton
-                button class=company-button onclick=inizializzaApp('Helvetia') style=background-color#dc3545Helvetiabutton
-            div
+        <div class="modal-wrapper">
+            <div class="modal-content fixed-color-scheme">
+                <h2>Seleziona la Compagnia</h2>
+                <button class="company-button" onclick="inizializzaApp('Allianz')" style="background-color:#007bff">Allianz</button>
+                <button class="company-button" onclick="inizializzaApp('HDI')" style="background-color:#28a745">HDI</button>
+                <button class="company-button" onclick="inizializzaApp('Vittoria')" style="background-color:#6f42c1">Vittoria</button>
+                <button class="company-button" onclick="inizializzaApp('ARAG')" style="background-color:#ffc107">ARAG</button>
+                <button class="company-button" onclick="inizializzaApp('Helvetia')" style="background-color:#dc3545">Helvetia</button>
+            </div>
            
-            div class=modal-content fixed-color-scheme id=utility-section
-                h2Altre Funzionih2
-                div class=utility-grid-container
-                    button class=utility-button onclick=mostraTabella('anticipi')
-                        i class=fas fa-hand-holding-usd fa-2xi
-                        spanANTICIPOspan
-                    button
-                    button class=utility-button onclick=mostraTabella('abbuoni')
-                         i class=fas fa-tags fa-2xi
-                         spanABBUONIspan
-                    button
-                    button class=utility-button onclick=mostraTabella('bonifici_hdi_arag')
-                        i class=fas fa-university fa-2xi
-                        spanBONIFICI HDIARAGspan
-                    button
-                    button class=utility-button onclick=mostraTabella('pos_hdi_arag')
-                        i class=far fa-credit-card fa-2xi
-                        spanPOS HDIARAGspan
-                    button
-                    button class=utility-button onclick=mostraTabella('bonifici_allianz')
-                        i class=fas fa-university fa-2xi
-                        spanBONIFICI ALLIANZspan
-                    button
-                    button class=utility-button onclick=mostraTabella('bonifici_vittoria')
-                        i class=fas fa-university fa-2xi
-                        spanBONIFICI VITTORIAspan
-                    button
-                     button class=utility-button onclick=mostraTabella('riattivazioni_vittoria')
-                        i class=fas fa-calendar-check fa-2xi
-                        spanRIATTIVAZIONI VITTORIAspan
-                    button
-                    button class=utility-button onclick=mostraTabella('promemoria')
-                        i class=fas fa-bell fa-2xi
-                        spanPROMEMORIAspan
-                    button
-                div
-            div
-        div
-    div
+            <div class="modal-content fixed-color-scheme" id="utility-section">
+                <h2>Altre Funzioni</h2>
+                <div class="utility-grid-container">
+                    <button class="utility-button" onclick="mostraTabella('anticipi')">
+                        <i class="fas fa-hand-holding-usd fa-2x"></i>
+                        <span>ANTICIPO</span>
+                    </button>
+                    <button class="utility-button" onclick="mostraTabella('abbuoni')">
+                         <i class="fas fa-tags fa-2x"></i>
+                         <span>ABBUONI</span>
+                    </button>
+                    <button class="utility-button" onclick="mostraTabella('bonifici_hdi_arag')">
+                        <i class="fas fa-university fa-2x"></i>
+                        <span>BONIFICI HDI/ARAG</span>
+                    </button>
+                    <button class="utility-button" onclick="mostraTabella('pos_hdi_arag')">
+                        <i class="far fa-credit-card fa-2x"></i>
+                        <span>POS HDI/ARAG</span>
+                    </button>
+                    <button class="utility-button" onclick="mostraTabella('bonifici_allianz')">
+                        <i class="fas fa-university fa-2x"></i>
+                        <span>BONIFICI ALLIANZ</span>
+                    </button>
+                    <button class="utility-button" onclick="mostraTabella('bonifici_vittoria')">
+                        <i class="fas fa-university fa-2x"></i>
+                        <span>BONIFICI VITTORIA</span>
+                    </button>
+                     <button class="utility-button" onclick="mostraTabella('riattivazioni_vittoria')">
+                        <i class="fas fa-calendar-check fa-2x"></i>
+                        <span>RIATTIVAZIONI VITTORIA</span>
+                    </button>
+                    <button class="utility-button" onclick="mostraTabella('promemoria')">
+                        <i class="fas fa-bell fa-2x"></i>
+                        <span>PROMEMORIA</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
     
-    div class=modal-overlay modal-full id=generic-modal style=displaynone;
-        div class=modal-content-full fixed-color-scheme
-            div class=modal-toolbar
-                h2 id=generic-modal-titleh2
-                div class=filter-group
-                    labelFiltra per datalabel
-                    select id=generic-filtro-annoselect
-                    select id=generic-filtro-meseselect
-                    label id=generic-filtro-cliente-labelFiltra perlabel
-                    input type=text id=generic-filtro-cliente placeholder=Nome...
-                    button onclick=applicaFiltriTabella()Applica Filtributton
-                    button class=button-secondary onclick=resetFiltriTabella()Resettabutton
-                div
-                div class=action-group
-                    button class=button-save onclick=apriFormAggiunta()i class=fa fa-plusi Aggiungi Nuovobutton
-                    button class=button-secondary onclick=chiudiGenericModal()Chiudibutton
-                div
-             div
-            div id=generic-modal-notification class=save-notificationdiv
-            div style=overflow-x auto;
-                table id=generic-table class=generic-table
-                   theadthead
-                   tbodytbody
-                table
-            div
-        div
-    div
+    <div class="modal-overlay modal-full" id="generic-modal" style="display:none;">
+        <div class="modal-content-full fixed-color-scheme">
+            <div class="modal-toolbar">
+                <h2 id="generic-modal-title"></h2>
+                <div class="filter-group">
+                    <label>Filtra per data:</label>
+                    <select id="generic-filtro-anno"></select>
+                    <select id="generic-filtro-mese"></select>
+                    <label id="generic-filtro-cliente-label">Filtra per:</label>
+                    <input type="text" id="generic-filtro-cliente" placeholder="Nome...">
+                    <button onclick="applicaFiltriTabella()">Applica Filtri</button>
+                    <button class="button-secondary" onclick="resetFiltriTabella()">Resetta</button>
+                </div>
+                <div class="action-group">
+                    <button class="button-save" onclick="apriFormAggiunta()"><i class="fa fa-plus"></i> Aggiungi Nuovo</button>
+                    <button class="button-secondary" onclick="chiudiGenericModal()">Chiudi</button>
+                </div>
+             </div>
+            <div id="generic-modal-notification" class="save-notification"></div>
+            <div style="overflow-x: auto;">
+                <table id="generic-table" class="generic-table">
+                   <thead></thead>
+                   <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 
-    div class=modal-overlay id=add-movimento-modal style=displaynone; z-index 1001;
-        div class=modal-content style=text-align left; width 450px; padding 30px;
-            h2 id=add-movimento-title style=text-align center;Aggiungi Nuovoh2
-            form id=add-movimento-form onsubmit=event.preventDefault(); processaFormAggiunta();form
-            div style=display flex; gap 10px; margin-top 20px;
-                button onclick=processaFormAggiunta() class=button-save style=width 50%;Salvabutton
-                button type=button class=button-secondary style=width 50%; onclick=document.getElementById('add-movimento-modal').style.display = 'none'Annullabutton
-            div
-        div
-    div
+    <div class="modal-overlay" id="add-movimento-modal" style="display:none; z-index: 1001;">
+        <div class="modal-content" style="text-align: left; width: 450px; padding: 30px;">
+            <h2 id="add-movimento-title" style="text-align: center;">Aggiungi Nuovo</h2>
+            <form id="add-movimento-form" onsubmit="event.preventDefault(); processaFormAggiunta();"></form>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button onclick="processaFormAggiunta()" class="button-save" style="width: 50%;">Salva</button>
+                <button type="button" class="button-secondary" style="width: 50%;" onclick="document.getElementById('add-movimento-modal').style.display = 'none'">Annulla</button>
+            </div>
+        </div>
+    </div>
 
-    div class=container id=main-container
-        h1 id=main-titleRegistro Cassah1
+    <div class="container" id="main-container">
+        <h1 id="main-title">Registro Cassa</h1>
         
-        div class=app-header
-             div class=header-group
-                 button onclick=tornaAllaSelezioneCompagnia() class=button-secondary title=Torna alla selezionei class=fa fa-arrow-lefti Indietrobutton
-            div
-            div class=header-group
-                label for=date-selectorVisualizza movimenti dellabel
-                input type=date id=date-selector onchange=caricaGiornale(this.valueAsDate)
-            div
-            div class=header-group
-                div id=user-infodiv
-                div id=status-indicatordiv
-                button onclick=stampaPersonalizzata() class=button-secondaryStampabutton
-                button id=btn-festa class=button-secondary style=display none;FestaChiusurabutton
-            div
-         div
+        <div class="app-header">
+             <div class="header-group">
+                 <button onclick="tornaAllaSelezioneCompagnia()" class="button-secondary" title="Torna alla selezione"><i class="fa fa-arrow-left"></i> Indietro</button>
+            </div>
+            <div class="header-group">
+                <label for="date-selector">Visualizza movimenti del:</label>
+                <input type="date" id="date-selector" onchange="caricaGiornale(this.valueAsDate)">
+            </div>
+            <div class="header-group">
+                <div id="user-info"></div>
+                <div id="status-indicator"></div>
+                <button onclick="stampaPersonalizzata()" class="button-secondary">Stampa</button>
+                <button id="btn-festa" class="button-secondary" style="display: none;">Festa/Chiusura</button>
+            </div>
+         </div>
     
        
-        div class=box id=box-inizio-giornata
-            h21. Inizio Giornatah2
-            div class=riporto-toggle-container
-                label for=riporto-mode-toggle class=switch-label id=riporto-mode-labelRiporto Automaticolabel
-                label class=switch
-                    input type=checkbox id=riporto-mode-toggle onchange=toggleRiportoMode(this.checked)
-                    span class=slider roundspan
-                label
-            div
-            label for=riportoInizialestrongRiporto da Cassa Teorica Giorno Precedente (€)stronglabel
-            input type=number id=riportoIniziale placeholder=0.00 step=0.01 oninput=aggiornaDatiGiornoCorrente({ riportoIniziale parseFloat(this.value)  0 })
-        div
+        <div class="box" id="box-inizio-giornata">
+            <h2>1. Inizio Giornata</h2>
+            <div class="riporto-toggle-container">
+                <label for="riporto-mode-toggle" class="switch-label" id="riporto-mode-label">Riporto Automatico</label>
+                <label class="switch">
+                    <input type="checkbox" id="riporto-mode-toggle" onchange="toggleRiportoMode(this.checked)">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+            <label for="riportoIniziale"><strong>Riporto da Cassa Teorica Giorno Precedente (€):</strong></label>
+            <input type="number" id="riportoIniziale" placeholder="0.00" step="0.01" oninput="aggiornaDatiGiornoCorrente({ riportoIniziale: parseFloat(this.value) || 0 })">
+        </div>
     
-        div class=grid-container
-            fieldset id=form-movimento-fieldset
-                div class=box
-                    h2 id=form-title2. Registrazione Movimentoh2
-                    form id=formMovimento onsubmit=event.preventDefault(); processaFormMovimento();
-                        input type=hidden id=editingIndex value=
-                        input type=hidden id=editingMovimentoId value=
-                        input type=hidden id=editingMovimentoData value=
-                        label for=metodologiaMetodologia Incassolabel
-                        select id=metodologia onchange=aggiornaCampiCondizionali()select
+        <div class="grid-container">
+            <fieldset id="form-movimento-fieldset">
+                <div class="box">
+                    <h2 id="form-title">2. Registrazione Movimento</h2>
+                    <form id="formMovimento" onsubmit="event.preventDefault(); processaFormMovimento();">
+                        <input type="hidden" id="editingIndex" value="">
+                        <input type="hidden" id="editingMovimentoId" value="">
+                        <input type="hidden" id="editingMovimentoData" value="">
+                        <label for="metodologia">Metodologia Incasso:</label>
+                        <select id="metodologia" onchange="aggiornaCampiCondizionali()"></select>
                         
-                        div id=divVersamento style=displaynone;
-                            label for=versamentoContantiVersamento Contanti (€)label
-                            input type=number id=versamentoContanti step=0.01 placeholder=0.00
-                            label for=versamentoAssegniVersamento Assegni (€)label
-                            input type=number id=versamentoAssegni step=0.01 placeholder=0.00
-                        div
+                        <div id="divVersamento" style="display:none;">
+                            <label for="versamentoContanti">Versamento Contanti (€):</label>
+                            <input type="number" id="versamentoContanti" step="0.01" placeholder="0.00">
+                            <label for="versamentoAssegni">Versamento Assegni (€):</label>
+                            <input type="number" id="versamentoAssegni" step="0.01" placeholder="0.00">
+                        </div>
 
-                        div id=campi-standard
-                             div id=divTipoPosAllianz style=displaynone;
-                                label for=tipoPosAllianzTipo POSlabel
-                                select id=tipoPosAllianz
-                                   option value=POS DirezionePOS Direzioneoption
-                                    option value=POS AgenziaPOS Agenziaoption
-                                select
-                            div
-                            div id=divTipoAnticipo style=displaynone;
-                                label for=tipoAnticipoTipo Anticipolabel
-                                select id=tipoAnticipo onchange=aggiornaCampiCondizionali()
-                                    option value=Anticipo ContantiAnticipo Contantioption
-                                    option value=Anticipo AssegnoAnticipo Assegnooption
-                                    option value=Anticipo POSAnticipo POSoption
-                                    option value=Anticipo BonificoAnticipo Bonificooption
-                                    option value=PlafondPlafondoption
-                                    option value=Sospeso CassaSospeso Cassaoption
-                                select
-                            div
+                        <div id="campi-standard">
+                             <div id="divTipoPosAllianz" style="display:none;">
+                                <label for="tipoPosAllianz">Tipo POS:</label>
+                                <select id="tipoPosAllianz">
+                                   <option value="POS Direzione">POS Direzione</option>
+                                    <option value="POS Agenzia">POS Agenzia</option>
+                                </select>
+                            </div>
+                            <div id="divTipoAnticipo" style="display:none;">
+                                <label for="tipoAnticipo">Tipo Anticipo:</label>
+                                <select id="tipoAnticipo" onchange="aggiornaCampiCondizionali()">
+                                    <option value="Anticipo Contanti">Anticipo Contanti</option>
+                                    <option value="Anticipo Assegno">Anticipo Assegno</option>
+                                    <option value="Anticipo POS">Anticipo POS</option>
+                                    <option value="Anticipo Bonifico">Anticipo Bonifico</option>
+                                    <option value="Plafond">Plafond</option>
+                                    <option value="Sospeso Cassa">Sospeso Cassa</option>
+                                </select>
+                            </div>
                     
-                            div id=divRientroMetodo style=displaynone;
-                                label for=rientroMetodoMetodo di Rientrolabel
-                                select id=rientroMetodo onchange=aggiornaCampiCondizionali()
-                                    option value=ContantiContantioptionoption value=AssegnoAssegnooption
-                                    option value=POSPOSoptionoption value=BonificoBonificooption
-                                select
-                            div
-                            div id=divNumeroAssegno style=displaynone;
-                                label for=numeroAssegnoNumero Assegnolabel
-                                input type=text id=numeroAssegno placeholder=N° Assegno
-                            div
-                        div
+                            <div id="divRientroMetodo" style="display:none;">
+                                <label for="rientroMetodo">Metodo di Rientro:</label>
+                                <select id="rientroMetodo" onchange="aggiornaCampiCondizionali()">
+                                    <option value="Contanti">Contanti</option><option value="Assegno">Assegno</option>
+                                    <option value="POS">POS</option><option value="Bonifico">Bonifico</option>
+                                </select>
+                            </div>
+                            <div id="divNumeroAssegno" style="display:none;">
+                                <label for="numeroAssegno">Numero Assegno:</label>
+                                <input type="text" id="numeroAssegno" placeholder="N° Assegno">
+                            </div>
+                        </div>
 
-                        label for=nomeClienteNome Clientelabelinput type=text id=nomeCliente required
-                        label for=numeroPolizzaNumero Polizzalabelinput type=text id=numeroPolizza
-                        label for=importo id=label-importoImporto Titolo (€)labelinput type=number id=importo step=0.01 placeholder=0.00 required oninput=calcolaImportoMultiplo()
+                        <label for="nomeCliente">Nome Cliente:</label><input type="text" id="nomeCliente" required>
+                        <label for="numeroPolizza">Numero Polizza:</label><input type="text" id="numeroPolizza">
+                        <label for="importo" id="label-importo">Importo Titolo (€):</label><input type="number" id="importo" step="0.01" placeholder="0.00" required oninput="calcolaImportoMultiplo()">
                         
-                         div id=divIncassoMultiplo style=displaynone;
-                            hr
-                            h4Parte 1h4
-                            labelImporto Parte 1 (€)label
-                            input type=number id=importoMultiplo1 step=0.01 oninput=calcolaImportoMultiplo()
-                            labelMetodologia Parte 1label
-                            select id=metodologiaMultiplo1 onchange=aggiornaCampiCondizionaliMultiplo(1)select
-                            div id=campiCondizionaliMultiplo1div
-                            hr
-                            h4Parte 2h4
-                            labelImporto Parte 2 (€)label
-                            input type=number id=importoMultiplo2 step=0.01 readonly
-                            labelMetodologia Parte 2label
-                            select id=metodologiaMultiplo2 onchange=aggiornaCampiCondizionaliMultiplo(2)select
-                            div id=campiCondizionaliMultiplo2div
-                            hr
-                         div
+                         <div id="divIncassoMultiplo" style="display:none;">
+                            <hr>
+                            <h4>Parte 1</h4>
+                            <label>Importo Parte 1 (€):</label>
+                            <input type="number" id="importoMultiplo1" step="0.01" oninput="calcolaImportoMultiplo()">
+                            <label>Metodologia Parte 1:</label>
+                            <select id="metodologiaMultiplo1" onchange="aggiornaCampiCondizionaliMultiplo(1)"></select>
+                            <div id="campiCondizionaliMultiplo1"></div>
+                            <hr>
+                            <h4>Parte 2</h4>
+                            <label>Importo Parte 2 (€):</label>
+                            <input type="number" id="importoMultiplo2" step="0.01" readonly>
+                            <label>Metodologia Parte 2:</label>
+                            <select id="metodologiaMultiplo2" onchange="aggiornaCampiCondizionaliMultiplo(2)"></select>
+                            <div id="campiCondizionaliMultiplo2"></div>
+                            <hr>
+                         </div>
 
-                        div id=divProvvigioni style=displaynone;
-                            label for=provvigioniProvvigioni (€)label
-                            input type=number id=provvigioni step=0.01 placeholder=0.00
-                        div
+                        <div id="divProvvigioni" style="display:none;">
+                            <label for="provvigioni">Provvigioni (€):</label>
+                            <input type="number" id="provvigioni" step="0.01" placeholder="0.00">
+                        </div>
              
-                        label for=arrotondamentiArrotondamenti (€)labelinput type=number id=arrotondamenti step=0.01 placeholder=Es. -0.02
+                        <label for="arrotondamenti">Arrotondamenti (€):</label><input type="number" id="arrotondamenti" step="0.01" placeholder="Es. -0.02">
                         
-                        label for=abbuoniAbbuoni (€)label
-                        input type=number id=abbuoni step=0.01 placeholder=0.00 oninput=togglePersonaAbbuono()
-                        div id=divPersonaAbbuono style=displaynone;
-                            label for=personaAbbuonoPersona che effettua l'abbuonolabel
-                            input type=text id=personaAbbuono placeholder=Nome persona
-                        div
+                        <label for="abbuoni">Abbuoni (€):</label>
+                        <input type="number" id="abbuoni" step="0.01" placeholder="0.00" oninput="togglePersonaAbbuono()">
+                        <div id="divPersonaAbbuono" style="display:none;">
+                            <label for="personaAbbuono">Persona che effettua l'abbuono:</label>
+                            <input type="text" id="personaAbbuono" placeholder="Nome persona">
+                        </div>
                         
-                        label for=usciteUscite Cassa (€)labelinput type=number id=uscite step=0.01 placeholder=0.00
-                        div id=form-buttons
-                            button type=submitAggiungi Movimentobutton
-                        div
-                    form
-                div
-            fieldset
-            fieldset id=box-conteggio-cassa-fieldset
-                 div class=box id=box-conteggio-cassa
-                    div style=display flex; justify-content space-between; align-items center;
-                        h23. Conteggio Fisico Cassah2
-                        button type=button onclick=azzeraConteggio() class=button-delete style=width auto; font-size 0.8rem; padding 5px 10px; margin-bottom 0;Azzerabutton
-                    div
-                    div id=conteggioBanconotediv
-                    div id=conteggioMonetediv
-                    div id=box-conteggio-assegni
-                        h3Assegni in Cassah3
-                        div id=lista-conteggio-assegnidiv
-                        button onclick=aggiungiCampoAssegnoConteggio() class=button-secondary style=width auto; padding 5px 10px; font-size 0.9rem;+ Aggiungi Assegnobutton
-                    div
-                    div class=riepilogo-totaliTotale Contato Fisicamente € span id=totaleConteggioFisico0.00spandiv
-                div
-            fieldset
-        div
+                        <label for="uscite">Uscite Cassa (€):</label><input type="number" id="uscite" step="0.01" placeholder="0.00">
+                        <div id="form-buttons">
+                            <button type="submit">Aggiungi Movimento</button>
+                        </div>
+                    </form>
+                </div>
+            </fieldset>
+            <fieldset id="box-conteggio-cassa-fieldset">
+                 <div class="box" id="box-conteggio-cassa">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2>3. Conteggio Fisico Cassa</h2>
+                        <button type="button" onclick="azzeraConteggio()" class="button-delete" style="width: auto; font-size: 0.8rem; padding: 5px 10px; margin-bottom: 0;">Azzera</button>
+                    </div>
+                    <div id="conteggioBanconote"></div>
+                    <div id="conteggioMonete"></div>
+                    <div id="box-conteggio-assegni">
+                        <h3>Assegni in Cassa</h3>
+                        <div id="lista-conteggio-assegni"></div>
+                        <button onclick="aggiungiCampoAssegnoConteggio()" class="button-secondary" style="width: auto; padding: 5px 10px; font-size: 0.9rem;">+ Aggiungi Assegno</button>
+                    </div>
+                    <div class="riepilogo-totali">Totale Contato Fisicamente: € <span id="totaleConteggioFisico">0.00</span></div>
+                </div>
+            </fieldset>
+        </div>
     
-        div class=box id=box-riepilogo-movimenti
-            h2Riepilogo Movimenti di Cassah2
-            div style=overflow-x auto;
-                table id=tabellaMovimenti
-                    theadtr
-                        th class=col-data-mensileDatath
-                        thClienteththPolizzaththMetodoththImporto (€)th
-                        th class=col-provvigioniProvv.(€)th
-                        thArroton. (€)th
-                        thAbbuoni (€)th
-                        thUscite (€)th
-                        th class=col-impatto-cassaImpatto (€)th
-                        thAzionith
-                    trthead
-                    tbodytbody
-                table
-            div
-            div class=riepilogo-totali col-cassa-teoricaCassa Teorica Finale (Riporto + Movimenti) € span id=cassaTeorica0.00spandiv
-        div
+        <div class="box" id="box-riepilogo-movimenti">
+            <h2>Riepilogo Movimenti di Cassa</h2>
+            <table id="tabellaMovimenti">
+                <thead><tr>
+                    <th class="col-data-mensile">Data</th>
+                    <th>Cliente</th><th>Polizza</th><th>Metodo</th><th>Importo (€)</th>
+                    <th class="col-provvigioni">Provv.(€)</th>
+                    <th>Arroton. (€)</th>
+                    <th>Abbuoni (€)</th>
+                    <th>Uscite (€)</th>
+                    <th class="col-impatto-cassa">Impatto (€)</th>
+                    <th>Azioni</th>
+                 </tr></thead>
+                <tbody></tbody>
+            </table>
+            <div class="riepilogo-totali col-cassa-teorica">Cassa Teorica Finale (Riporto + Movimenti): € <span id="cassaTeorica">0.00</span></div>
+        </div>
         
-        div class=box id=box-provvigioni style=displaynone;
-            h2Riepilogo Provvigioni e Decadi (Mese Corrente)h2
-            div class=riepilogo-totali
-                Totale Provvigioni del Mese € span id=provvigioni-mese-corrente0.00span
-            div
-            div class=decade-grid
-                divstrong1ª Decade (1-10)strong € span id=decade1-result0.00spandiv
-                divstrong2ª Decade (11-20)strong € span id=decade2-result0.00spandiv
-                divstrong3ª Decade (21+)strong € span id=decade3-result0.00spandiv
-            div
-        div
+        <div class="box" id="box-provvigioni" style="display:none;">
+            <h2>Riepilogo Provvigioni e Decadi (Mese Corrente)</h2>
+            <div class="riepilogo-totali">
+                Totale Provvigioni del Mese: € <span id="provvigioni-mese-corrente">0.00</span>
+            </div>
+            <div class="decade-grid">
+                <div><strong>1ª Decade (1-10):</strong> € <span id="decade1-result">0.00</span></div>
+                <div><strong>2ª Decade (11-20):</strong> € <span id="decade2-result">0.00</span></div>
+                <div><strong>3ª Decade (21+):</strong> € <span id="decade3-result">0.00</span></div>
+            </div>
+        </div>
         
-        div class=box id=box-verifica-finale
-             h24. Verifica Finaleh2
-            button onclick=verificaChiusura() class=button-secondaryVERIFICA I CONTIbutton
-            div class=risultato-verifica id=risultatoVerificaIn attesa di verifica...div
-        div
-    div
+        <div class="box" id="box-verifica-finale">
+             <h2>4. Verifica Finale</h2>
+            <button onclick="verificaChiusura()" class="button-secondary">VERIFICA I CONTI</button>
+            <div class="risultato-verifica" id="risultatoVerifica">In attesa di verifica...</div>
+        </div>
+    </div>
     
-    div id=print-layoutdiv
+    <div id="print-layout"></div>
 
-script
- ... (Il codice Javascript rimane invariato, le modifiche sono solo nell'HTML e CSS sopra) ...
- ========= NUOVA CONFIGURAZIONE FIREBASE =========
+<script>
+// ... (Il codice Javascript rimane invariato, le modifiche sono solo nell'HTML e CSS sopra) ...
+// ========= NUOVA CONFIGURAZIONE FIREBASE =========
     const firebaseConfig = {
-      apiKey AIzaSyBr8TBws4pTq6nlCmbQbq8bezgNIgd63E8,
-      authDomain giornalecassacondiviso.firebaseapp.com,
-      projectId giornalecassacondiviso,
-      storageBucket giornalecassacondiviso.firebasestorage.app,
-      messagingSenderId 177241129453,
-      appId 1177241129453web2e4fcbe61032bb79b827e4
+      apiKey: "AIzaSyBr8TBws4pTq6nlCmbQbq8bezgNIgd63E8",
+      authDomain: "giornalecassacondiviso.firebaseapp.com",
+      projectId: "giornalecassacondiviso",
+      storageBucket: "giornalecassacondiviso.firebasestorage.app",
+      messagingSenderId: "177241129453",
+      appId: "1:177241129453:web:2e4fcbe61032bb79b827e4"
     };
-     =================================================
+    // =================================================
 
     firebase.initializeApp(firebaseConfig);
     
@@ -924,11 +799,11 @@ script
     const statusIndicator = document.getElementById('status-indicator');
 
     let stato = {
-        compagniaSelezionata null,
-        dataSelezionata null,
-        datiGiornoCorrente null,
-        datiUtente null,
-        movimentiVistaMensile []
+        compagniaSelezionata: null,
+        dataSelezionata: null,
+        datiGiornoCorrente: null,
+        datiUtente: null,
+        movimentiVistaMensile: []
     };
     
     let unsubscribeGiornale = null;
@@ -938,29 +813,29 @@ script
     const tagliBanconote = [500, 200, 100, 50, 20, 10, 5];
     const tagliMonete = [2, 1, 0.50, 0.20, 0.10, 0.05, 0.02, 0.01];
 
-     =================================================================
-     GESTIONE AUTENTICAZIONE
-     =================================================================
+    // =================================================================
+    // GESTIONE AUTENTICAZIONE
+    // =================================================================
     
-    auth.onAuthStateChanged(async user = {
+    auth.onAuthStateChanged(async user => {
         if (user) {
             const userDoc = await db.collection('users').doc(user.uid).get();
             stato.datiUtente = {
-                uid user.uid,
-                email user.email,
-                displayName userDoc.exists  userDoc.data().displayName  user.email.split('@')[0]
+                uid: user.uid,
+                email: user.email,
+                displayName: userDoc.exists ? userDoc.data().displayName : user.email.split('@')[0]
             };
             
             document.getElementById('auth-container').style.display = 'none';
             document.getElementById('company-selector-modal').style.display = 'flex';
-            document.getElementById('user-info').textContent = `Utente ${stato.datiUtente.displayName}`;
+            document.getElementById('user-info').textContent = `Utente: ${stato.datiUtente.displayName}`;
             setupAlertListeners();
         } else {
             stato.datiUtente = null;
             document.getElementById('auth-container').style.display = 'block';
             document.getElementById('company-selector-modal').style.display = 'none';
             document.getElementById('main-container').style.display = 'none';
-            Object.values(unsubscribeAlerts).forEach(unsub = unsub());
+            Object.values(unsubscribeAlerts).forEach(unsub => unsub());
         }
     });
 
@@ -978,11 +853,11 @@ script
         try {
             const userCredential = await auth.createUserWithEmailAndPassword(email, password);
             await db.collection('users').doc(userCredential.user.uid).set({
-                displayName username
+                displayName: username
             });
             errorDiv.textContent = '';
         } catch (error) {
-            errorDiv.textContent = `Errore ${error.message}`;
+            errorDiv.textContent = `Errore: ${error.message}`;
         }
     }
 
@@ -991,40 +866,40 @@ script
         const password = document.getElementById('login-password').value;
         const errorDiv = document.getElementById('auth-error');
 
-         Imposta la persistenza a SESSION prima di tentare il login
+        // Imposta la persistenza a SESSION prima di tentare il login
         auth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
-            .then(() = {
-                 Ora che la persistenza è impostata, esegui il login
+            .then(() => {
+                // Ora che la persistenza è impostata, esegui il login
                 return auth.signInWithEmailAndPassword(email, password);
             })
-            .catch(error = {
-                 Gestisce sia errori di setPersistence sia di signIn
-                errorDiv.textContent = `Errore ${error.message}`;
+            .catch(error => {
+                // Gestisce sia errori di setPersistence sia di signIn
+                errorDiv.textContent = `Errore: ${error.message}`;
             });
     }
 
     function logoutUser() {
-        if (confirm('Sei sicuro di voler uscire')) {
-            auth.signOut().then(() = location.reload());
+        if (confirm('Sei sicuro di voler uscire?')) {
+            auth.signOut().then(() => location.reload());
         }
     }
     
-     =================================================================
-     GESTIONE ALERT
-     =================================================================
+    // =================================================================
+    // GESTIONE ALERT
+    // =================================================================
 
     function setupAlertListeners() {
         if (unsubscribeAlerts.riattivazioni) unsubscribeAlerts.riattivazioni();
-        unsubscribeAlerts.riattivazioni = db.collection('riattivazioni_vittoria').onSnapshot(snapshot = {
-            const riattivazioni = snapshot.docs.map(doc = ({ id doc.id, ...doc.data() }));
+        unsubscribeAlerts.riattivazioni = db.collection('riattivazioni_vittoria').onSnapshot(snapshot => {
+            const riattivazioni = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             controllaRiattivazioni(riattivazioni);
-        }, error = console.error(Errore listener riattivazioni , error));
+        }, error => console.error("Errore listener riattivazioni: ", error));
 
         if (unsubscribeAlerts.promemoria) unsubscribeAlerts.promemoria();
-        unsubscribeAlerts.promemoria = db.collection('promemoria').onSnapshot(snapshot = {
-            const promemoria = snapshot.docs.map(doc = ({ id doc.id, ...doc.data() }));
+        unsubscribeAlerts.promemoria = db.collection('promemoria').onSnapshot(snapshot => {
+            const promemoria = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             controllaPromemoria(promemoria);
-        }, error = console.error(Errore listener promemoria , error));
+        }, error => console.error("Errore listener promemoria: ", error));
     }
 
     function controllaRiattivazioni(riattivazioni = []) {
@@ -1034,16 +909,16 @@ script
         const oggi = new Date();
         oggi.setHours(0, 0, 0, 0);
 
-        const daMostrare = riattivazioni.filter(r = {
-            const dataRiattivazione = r.dataRiattivazione  new Date(r.dataRiattivazione.replace(-g, ''))  null;
-            return !r.riattivata && dataRiattivazione && dataRiattivazione = oggi;
+        const daMostrare = riattivazioni.filter(r => {
+            const dataRiattivazione = r.dataRiattivazione ? new Date(r.dataRiattivazione.replace(/-/g, '/')) : null;
+            return !r.riattivata && dataRiattivazione && dataRiattivazione <= oggi;
         });
 
-        if (daMostrare.length  0) {
-            daMostrare.forEach(r = {
+        if (daMostrare.length > 0) {
+            daMostrare.forEach(r => {
                 const li = document.createElement('li');
-                li.innerHTML = `strong${r.contraente  'ND'}strong - Polizza ${r.nPolizza  'ND'} - Targa ${r.targa  'ND'}.
-                                 Data riattivazione strong${new Date(r.dataRiattivazione.replace(-g, '')).toLocaleDateString('it-IT')}strong`;
+                li.innerHTML = `<strong>${r.contraente || 'N/D'}</strong> - Polizza ${r.nPolizza || 'N/D'} - Targa ${r.targa || 'N/D'}.
+                                 Data riattivazione: <strong>${new Date(r.dataRiattivazione.replace(/-/g, '/')).toLocaleDateString('it-IT')}</strong>`;
                 alertList.appendChild(li);
             });
             alertContainer.style.display = 'block';
@@ -1058,12 +933,12 @@ script
         alertList.innerHTML = '';
         const oggiStr = formatDate(new Date());
 
-        const daMostrare = promemoria.filter(p = !p.fatto && p.data === oggiStr);
+        const daMostrare = promemoria.filter(p => !p.fatto && p.data === oggiStr);
 
-        if (daMostrare.length  0) {
-            daMostrare.forEach(p = {
+        if (daMostrare.length > 0) {
+            daMostrare.forEach(p => {
                 const li = document.createElement('li');
-                li.innerHTML = `strong${p.utente  'ND'}strong ${p.nota  ''}`;
+                li.innerHTML = `<strong>${p.utente || 'N/D'}:</strong> ${p.nota || ''}`;
                 alertList.appendChild(li);
             });
             alertContainer.style.display = 'block';
@@ -1072,9 +947,9 @@ script
         }
     }
 
-     =================================================================
-     LOGICA PRINCIPALE E GIORNALE CASSA
-     =================================================================
+    // =================================================================
+    // LOGICA PRINCIPALE E GIORNALE CASSA
+    // =================================================================
 
     function inizializzaApp(compagnia) {
         stato.compagniaSelezionata = compagnia;
@@ -1083,11 +958,11 @@ script
         document.getElementById('main-container').style.display = 'block';
         
         document.getElementById('main-title').textContent = `Registro Cassa ${compagnia}`;
-        const showProvvigioni = compagnia === 'HDI'  compagnia === 'Vittoria';
-        document.getElementById('box-provvigioni').style.display = showProvvigioni  'block'  'none';
+        const showProvvigioni = compagnia === 'HDI' || compagnia === 'Vittoria';
+        document.getElementById('box-provvigioni').style.display = showProvvigioni ? 'block' : 'none';
         
         const selectMetodo = document.getElementById('metodologia');
-        selectMetodo.innerHTML = `option value=ContantiContantioptionoption value=AssegnoAssegnooptionoption value=POSPOSoptionoption value=BonificoBonificooption`;
+        selectMetodo.innerHTML = `<option value="Contanti">Contanti</option><option value="Assegno">Assegno</option><option value="POS">POS</option><option value="Bonifico">Bonifico</option>`;
         selectMetodo.add(new Option('Versamento', 'Versamento'));
         if (compagnia === 'Allianz') {
              selectMetodo.add(new Option('Finanziamento Allianz Bank', 'Finanziamento Allianz Bank'));
@@ -1098,18 +973,18 @@ script
         selectMetodo.add(new Option('Anticipo', 'Anticipo'));
         selectMetodo.add(new Option('Rientro da Anticipo', 'Rientro da Anticipo'));
 
-        const isSimplifiedView = compagnia === 'ARAG'  compagnia === 'Helvetia';
-        document.getElementById('box-inizio-giornata').style.display = isSimplifiedView  'none'  'block';
-        document.getElementById('box-conteggio-cassa').style.display = isSimplifiedView  'none'  'block';
-        document.getElementById('box-verifica-finale').style.display = isSimplifiedView  'none'  'block';
-        document.getElementById('btn-festa').style.display = isSimplifiedView  'none'  'inline-block';
+        const isSimplifiedView = compagnia === 'ARAG' || compagnia === 'Helvetia';
+        document.getElementById('box-inizio-giornata').style.display = isSimplifiedView ? 'none' : 'block';
+        document.getElementById('box-conteggio-cassa').style.display = isSimplifiedView ? 'none' : 'block';
+        document.getElementById('box-verifica-finale').style.display = isSimplifiedView ? 'none' : 'block';
+        document.getElementById('btn-festa').style.display = isSimplifiedView ? 'none' : 'inline-block';
 
         if (isSimplifiedView) {
             document.body.classList.add('vista-mensile');
-            document.querySelector('#date-selector').labels[0].textContent = Visualizza movimenti del mese;
+            document.querySelector('#date-selector').labels[0].textContent = "Visualizza movimenti del mese:";
         } else {
             document.body.classList.remove('vista-mensile');
-            document.querySelector('#date-selector').labels[0].textContent = Giornale del;
+            document.querySelector('#date-selector').labels[0].textContent = "Giornale del:";
         }
 
         document.getElementById('date-selector').valueAsDate = new Date();
@@ -1127,12 +1002,12 @@ script
     }
 
     function caricaGiornale(data) {
-        if (!data  !stato.compagniaSelezionata) return;
+        if (!data || !stato.compagniaSelezionata) return;
         stato.dataSelezionata = data;
         
         if (unsubscribeGiornale) unsubscribeGiornale();
 
-        const isSimplifiedView = stato.compagniaSelezionata === 'ARAG'  stato.compagniaSelezionata === 'Helvetia';
+        const isSimplifiedView = stato.compagniaSelezionata === 'ARAG' || stato.compagniaSelezionata === 'Helvetia';
         
         if (isSimplifiedView) {
             stato.movimentiVistaMensile = [];
@@ -1143,29 +1018,29 @@ script
                 .where('compagnia', '==', stato.compagniaSelezionata)
                 .where('anno', '==', selectedYear)
                 .where('mese', '==', selectedMonth)
-                .onSnapshot(snapshot = {
+                .onSnapshot(snapshot => {
                     let movimentiDaMostrare = [];
-                    snapshot.forEach(doc = {
-                        const movimentiDelGiorno = doc.data().movimenti  [];
-                        movimentiDelGiorno.forEach((m, index) = {
+                    snapshot.forEach(doc => {
+                        const movimentiDelGiorno = doc.data().movimenti || [];
+                        movimentiDelGiorno.forEach((m, index) => {
                             m.dataMovimento = doc.data().dataKey;
                             m.originalIndex = index;
                             movimentiDaMostrare.push(m);
                         });
                     });
-                    movimentiDaMostrare.sort((a, b) = new Date(b.dataMovimento) - new Date(a.dataMovimento));
+                    movimentiDaMostrare.sort((a, b) => new Date(b.dataMovimento) - new Date(a.dataMovimento));
                     stato.movimentiVistaMensile = movimentiDaMostrare;
                     aggiornaTabellaMovimenti(stato.movimentiVistaMensile);
                     aggiornaTuttiRiepiloghi();
                     annullaModifica();
-                }, error = console.error(Errore vista semplificata, error));
+                }, error => console.error("Errore vista semplificata:", error));
 
         } else {
             stato.datiGiornoCorrente = null;
             const dataKey = formatDate(data);
             const docId = `${stato.compagniaSelezionata}_${dataKey}`;
             
-            unsubscribeGiornale = db.collection('giornaliCassa').doc(docId).onSnapshot(async doc = {
+            unsubscribeGiornale = db.collection('giornaliCassa').doc(docId).onSnapshot(async doc => {
                 statusIndicator.textContent = 'Sincronizzato';
                 statusIndicator.className = 'synced';
                 
@@ -1173,8 +1048,8 @@ script
                     stato.datiGiornoCorrente = doc.data();
                     if (!stato.datiGiornoCorrente.riportoIsManual) {
                         const riportoCorretto = await calcolaRiporto(stato.dataSelezionata);
-                        if (Math.abs(riportoCorretto - (stato.datiGiornoCorrente.riportoIniziale  0))  0.01) {
-                            await aggiornaDatiGiornoCorrente({ riportoIniziale riportoCorretto });
+                        if (Math.abs(riportoCorretto - (stato.datiGiornoCorrente.riportoIniziale || 0)) > 0.01) {
+                            await aggiornaDatiGiornoCorrente({ riportoIniziale: riportoCorretto });
                             return;
                         }
                     }
@@ -1183,8 +1058,8 @@ script
                     stato.datiGiornoCorrente = creaNuovoGiorno(data, riporto);
                 }
                 renderGiornale(stato.datiGiornoCorrente);
-            }, error = {
-                console.error(Errore nel listener del giornale , error);
+            }, error => {
+                console.error("Errore nel listener del giornale: ", error);
                 statusIndicator.textContent = 'Errore Connessione';
                 statusIndicator.className = 'error';
             });
@@ -1205,13 +1080,13 @@ script
             label.textContent = 'Riporto Automatico';
             inputRiporto.readOnly = true;
         }
-        inputRiporto.value = (datiGiorno.riportoIniziale  0).toFixed(2);
+        inputRiporto.value = (datiGiorno.riportoIniziale || 0).toFixed(2);
         
         creaCampiConteggio(datiGiorno.conteggioFisico);
         const divRisultato = document.getElementById('risultatoVerifica');
         if (datiGiorno.verificaResult) {
             divRisultato.textContent = datiGiorno.verificaResult.text;
-            divRisultato.className = `risultato-verifica ${datiGiorno.verificaResult.class  ''}`;
+            divRisultato.className = `risultato-verifica ${datiGiorno.verificaResult.class || ''}`;
         } else {
             divRisultato.textContent = 'In attesa di verifica...';
             divRisultato.className = 'risultato-verifica';
@@ -1225,27 +1100,27 @@ script
     function creaNuovoGiorno(data, riporto) {
         const dataKey = formatDate(data);
         return {
-            riportoIniziale riporto,
-            movimenti [],
-            conteggioFisico {},
-            cassaTeorica riporto,
-            dataKey dataKey,
-            compagnia stato.compagniaSelezionata,
-            anno data.getFullYear(),
-            mese data.getMonth()
+            riportoIniziale: riporto,
+            movimenti: [],
+            conteggioFisico: {},
+            cassaTeorica: riporto,
+            dataKey: dataKey,
+            compagnia: stato.compagniaSelezionata,
+            anno: data.getFullYear(),
+            mese: data.getMonth()
         };
     }
     
     async function aggiornaDatiGiornoCorrente(datiParziali, movimentiDaSincronizzare = null) {
-        if (!stato.compagniaSelezionata  !stato.dataSelezionata) return;
+        if (!stato.compagniaSelezionata || !stato.dataSelezionata) return;
 
         const dataKey = formatDate(stato.dataSelezionata);
         const docId = `${stato.compagniaSelezionata}_${dataKey}`;
         const docRef = db.collection('giornaliCassa').doc(docId);
         
         const datiDefault = {
-            lastModifiedBy stato.datiUtente.displayName,
-            lastModifiedAt firebase.firestore.FieldValue.serverTimestamp()
+            lastModifiedBy: stato.datiUtente.displayName,
+            lastModifiedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
         const datiDaSalvare = { ...datiDefault, ...datiParziali };
         
@@ -1257,7 +1132,7 @@ script
         try {
             statusIndicator.textContent = 'Salvataggio...';
             statusIndicator.className = 'saving';
-            await docRef.set(datiDaSalvare, { merge true });
+            await docRef.set(datiDaSalvare, { merge: true });
             
             if (movimentiDaSincronizzare) {
                 for (const mov of movimentiDaSincronizzare) {
@@ -1266,80 +1141,80 @@ script
             }
 
         } catch (error) {
-            console.error(Errore durante l'aggiornamento del giorno , error);
+            console.error("Errore durante l'aggiornamento del giorno: ", error);
             statusIndicator.textContent = 'Errore Salvataggio';
             statusIndicator.className = 'error';
         }
     }
 
     async function processaFormMovimento() {
-        const isSimplifiedView = stato.compagniaSelezionata === 'ARAG'  stato.compagniaSelezionata === 'Helvetia';
+        const isSimplifiedView = stato.compagniaSelezionata === 'ARAG' || stato.compagniaSelezionata === 'Helvetia';
 
         const editingIndex = document.getElementById('editingIndex').value;
         const editingMovimentoId = document.getElementById('editingMovimentoId').value;
         const editingMovimentoData = document.getElementById('editingMovimentoData').value;
         
         const baseMovimento = {
-            createdBy stato.datiUtente.displayName,
-            createdAt new Date().toISOString(),
-            movimentoId editingMovimentoId  `${new Date().getTime()}-${Math.random().toString(36).substring(2, 9)}`
+            createdBy: stato.datiUtente.displayName,
+            createdAt: new Date().toISOString(),
+            movimentoId: editingMovimentoId || `${new Date().getTime()}-${Math.random().toString(36).substring(2, 9)}`
         };
 
         const metodologia = document.getElementById('metodologia').value;
         let nuoviMovimenti = [];
 
         if (metodologia === 'Versamento') {
-            const versamentoContanti = parseFloat(document.getElementById('versamentoContanti').value)  0;
-            const versamentoAssegni = parseFloat(document.getElementById('versamentoAssegni').value)  0;
-            if (versamentoContanti  0) nuoviMovimenti.push({ ...baseMovimento, movimentoId `${baseMovimento.movimentoId}-1`, metodologia 'Versamento', nomeCliente 'Versamento Contanti', uscite versamentoContanti });
-            if (versamentoAssegni  0) nuoviMovimenti.push({ ...baseMovimento, movimentoId `${baseMovimento.movimentoId}-2`, metodologia 'Versamento', nomeCliente 'Versamento Assegni', uscite versamentoAssegni });
+            const versamentoContanti = parseFloat(document.getElementById('versamentoContanti').value) || 0;
+            const versamentoAssegni = parseFloat(document.getElementById('versamentoAssegni').value) || 0;
+            if (versamentoContanti > 0) nuoviMovimenti.push({ ...baseMovimento, movimentoId: `${baseMovimento.movimentoId}-1`, metodologia: 'Versamento', nomeCliente: 'Versamento Contanti', uscite: versamentoContanti });
+            if (versamentoAssegni > 0) nuoviMovimenti.push({ ...baseMovimento, movimentoId: `${baseMovimento.movimentoId}-2`, metodologia: 'Versamento', nomeCliente: 'Versamento Assegni', uscite: versamentoAssegni });
         } else if (metodologia === 'Incasso Multiplo') {
-            const common = { ...baseMovimento, nomeCliente document.getElementById('nomeCliente').value, numeroPolizza document.getElementById('numeroPolizza').value, provvigioni parseFloat(document.getElementById('provvigioni').value)  0, arrotondamenti parseFloat(document.getElementById('arrotondamenti').value)  0, abbuoni parseFloat(document.getElementById('abbuoni').value)  0, personaAbbuono document.getElementById('personaAbbuono').value, uscite parseFloat(document.getElementById('uscite').value)  0 };
-            const importo1 = parseFloat(document.getElementById('importoMultiplo1').value)  0;
-            const importo2 = parseFloat(document.getElementById('importoMultiplo2').value)  0;
-            if (Math.abs((parseFloat(document.getElementById('importo').value)  0) - (importo1 + importo2))  0.01) { alert(La somma delle parti non corrisponde all'importo totale.); return; }
-            nuoviMovimenti.push({ ...common, movimentoId `${baseMovimento.movimentoId}-1`, isSplit true, importo importo1, metodologia document.getElementById('metodologiaMultiplo1').value, ...leggiCampiCondizionaliMultiplo(1) });
-            nuoviMovimenti.push({ ...common, movimentoId `${baseMovimento.movimentoId}-2`, isSplit true, importo importo2, metodologia document.getElementById('metodologiaMultiplo2').value, ...leggiCampiCondizionaliMultiplo(2) });
+            const common = { ...baseMovimento, nomeCliente: document.getElementById('nomeCliente').value, numeroPolizza: document.getElementById('numeroPolizza').value, provvigioni: parseFloat(document.getElementById('provvigioni').value) || 0, arrotondamenti: parseFloat(document.getElementById('arrotondamenti').value) || 0, abbuoni: parseFloat(document.getElementById('abbuoni').value) || 0, personaAbbuono: document.getElementById('personaAbbuono').value, uscite: parseFloat(document.getElementById('uscite').value) || 0 };
+            const importo1 = parseFloat(document.getElementById('importoMultiplo1').value) || 0;
+            const importo2 = parseFloat(document.getElementById('importoMultiplo2').value) || 0;
+            if (Math.abs((parseFloat(document.getElementById('importo').value) || 0) - (importo1 + importo2)) > 0.01) { alert("La somma delle parti non corrisponde all'importo totale."); return; }
+            nuoviMovimenti.push({ ...common, movimentoId: `${baseMovimento.movimentoId}-1`, isSplit: true, importo: importo1, metodologia: document.getElementById('metodologiaMultiplo1').value, ...leggiCampiCondizionaliMultiplo(1) });
+            nuoviMovimenti.push({ ...common, movimentoId: `${baseMovimento.movimentoId}-2`, isSplit: true, importo: importo2, metodologia: document.getElementById('metodologiaMultiplo2').value, ...leggiCampiCondizionaliMultiplo(2) });
         } else {
             nuoviMovimenti.push({
                 ...baseMovimento,
-                nomeCliente document.getElementById('nomeCliente').value, numeroPolizza document.getElementById('numeroPolizza').value,
-                importo parseFloat(document.getElementById('importo').value)  0,
-                provvigioni parseFloat(document.getElementById('provvigioni').value)  0,
-                arrotondamenti parseFloat(document.getElementById('arrotondamenti').value)  0,
-                abbuoni parseFloat(document.getElementById('abbuoni').value)  0,
-                personaAbbuono document.getElementById('personaAbbuono').value,
-                uscite parseFloat(document.getElementById('uscite').value)  0,
-                metodologia metodologia, tipoPosAllianz document.getElementById('tipoPosAllianz').value,
-                tipoAnticipo document.getElementById('tipoAnticipo').value,
-                rientroMetodo document.getElementById('rientroMetodo').value,
-                numeroAssegno document.getElementById('numeroAssegno').value,
+                nomeCliente: document.getElementById('nomeCliente').value, numeroPolizza: document.getElementById('numeroPolizza').value,
+                importo: parseFloat(document.getElementById('importo').value) || 0,
+                provvigioni: parseFloat(document.getElementById('provvigioni').value) || 0,
+                arrotondamenti: parseFloat(document.getElementById('arrotondamenti').value) || 0,
+                abbuoni: parseFloat(document.getElementById('abbuoni').value) || 0,
+                personaAbbuono: document.getElementById('personaAbbuono').value,
+                uscite: parseFloat(document.getElementById('uscite').value) || 0,
+                metodologia: metodologia, tipoPosAllianz: document.getElementById('tipoPosAllianz').value,
+                tipoAnticipo: document.getElementById('tipoAnticipo').value,
+                rientroMetodo: document.getElementById('rientroMetodo').value,
+                numeroAssegno: document.getElementById('numeroAssegno').value,
             });
         }
         
         let movimentiDaSincronizzare = nuoviMovimenti;
 
         if(isSimplifiedView) {
-            const targetDateKey = editingMovimentoData  formatDate(new Date());
+            const targetDateKey = editingMovimentoData || formatDate(new Date());
             const docId = `${stato.compagniaSelezionata}_${targetDateKey}`;
             const docRef = db.collection('giornaliCassa').doc(docId);
             
             try {
                  statusIndicator.textContent = 'Salvataggio...';
                  statusIndicator.className = 'saving';
-                await db.runTransaction(async (transaction) = {
+                await db.runTransaction(async (transaction) => {
                     const doc = await transaction.get(docRef);
-                    const targetDate = new Date(targetDateKey.replace(-g, ''));
-                    const datiGiorno = doc.exists  doc.data()  creaNuovoGiorno(targetDate, 0);
-                    let movimentiAggiornati = [...(datiGiorno.movimenti  [])];
+                    const targetDate = new Date(targetDateKey.replace(/-/g, '/'));
+                    const datiGiorno = doc.exists ? doc.data() : creaNuovoGiorno(targetDate, 0);
+                    let movimentiAggiornati = [...(datiGiorno.movimenti || [])];
 
-                    if (editingIndex !== ) {
+                    if (editingIndex !== "") {
                         const movimentoOriginale = stato.movimentiVistaMensile[editingIndex];
                         if (movimentoOriginale.dataMovimento !== targetDateKey) {
-                            throw new Error(La data del movimento non può essere cambiata.);
+                            throw new Error("La data del movimento non può essere cambiata.");
                         }
-                        const indexNelDocumento = movimentiAggiornati.findIndex(m = m.movimentoId === movimentoOriginale.movimentoId);
-                        if(indexNelDocumento  -1) {
+                        const indexNelDocumento = movimentiAggiornati.findIndex(m => m.movimentoId === movimentoOriginale.movimentoId);
+                        if(indexNelDocumento > -1) {
                             const vecchioMovimento = movimentiAggiornati[indexNelDocumento];
                             await rimuoviMovimentiSecondari(vecchioMovimento);
                             movimentiAggiornati[indexNelDocumento] = nuoviMovimenti[0];
@@ -1349,36 +1224,36 @@ script
                     } else {
                         movimentiAggiornati.push(...nuoviMovimenti);
                     }
-                    transaction.set(docRef, { ...datiGiorno, movimenti movimentiAggiornati }, { merge true });
+                    transaction.set(docRef, { ...datiGiorno, movimenti: movimentiAggiornati }, { merge: true });
                 });
                 for (const mov of movimentiDaSincronizzare) {
                     await gestisciMovimentiSecondari(mov, targetDateKey, stato.compagniaSelezionata);
                 }
 
             } catch (error) {
-                 console.error(Errore salvataggio in vista semplificata , error);
+                 console.error("Errore salvataggio in vista semplificata: ", error);
                  statusIndicator.textContent = 'Errore Salvataggio';
                  statusIndicator.className = 'error';
             }
 
         } else {
-            let movimentiAggiornati = [...(stato.datiGiornoCorrente.movimenti  [])];
-            if (editingIndex !== ) {
+            let movimentiAggiornati = [...(stato.datiGiornoCorrente.movimenti || [])];
+            if (editingIndex !== "") {
                 const vecchioMovimento = movimentiAggiornati[editingIndex];
                 await rimuoviMovimentiSecondari(vecchioMovimento);
                 movimentiAggiornati[editingIndex] = nuoviMovimenti[0];
             } else {
                 movimentiAggiornati.push(...nuoviMovimenti);
             }
-            await aggiornaDatiGiornoCorrente({ movimenti movimentiAggiornati }, movimentiDaSincronizzare);
+            await aggiornaDatiGiornoCorrente({ movimenti: movimentiAggiornati }, movimentiDaSincronizzare);
         }
         
         annullaModifica();
     }
     
     function modificaMovimento(index) {
-        const isSimplifiedView = stato.compagniaSelezionata === 'ARAG'  stato.compagniaSelezionata === 'Helvetia';
-        const movimento = isSimplifiedView  stato.movimentiVistaMensile[index]  stato.datiGiornoCorrente.movimenti[index];
+        const isSimplifiedView = stato.compagniaSelezionata === 'ARAG' || stato.compagniaSelezionata === 'Helvetia';
+        const movimento = isSimplifiedView ? stato.movimentiVistaMensile[index] : stato.datiGiornoCorrente.movimenti[index];
 
         document.getElementById('editingIndex').value = index;
         document.getElementById('editingMovimentoId').value = movimento.movimentoId;
@@ -1387,41 +1262,41 @@ script
         }
 
         document.getElementById('metodologia').value = movimento.metodologia;
-        document.getElementById('tipoPosAllianz').value = movimento.tipoPosAllianz  'POS Direzione';
-        document.getElementById('tipoAnticipo').value = movimento.tipoAnticipo  'Anticipo Contanti';
-        document.getElementById('rientroMetodo').value = movimento.rientroMetodo  'Contanti';
-        document.getElementById('numeroAssegno').value = movimento.numeroAssegno  '';
+        document.getElementById('tipoPosAllianz').value = movimento.tipoPosAllianz || 'POS Direzione';
+        document.getElementById('tipoAnticipo').value = movimento.tipoAnticipo || 'Anticipo Contanti';
+        document.getElementById('rientroMetodo').value = movimento.rientroMetodo || 'Contanti';
+        document.getElementById('numeroAssegno').value = movimento.numeroAssegno || '';
         document.getElementById('nomeCliente').value = movimento.nomeCliente;
         document.getElementById('numeroPolizza').value = movimento.numeroPolizza;
         document.getElementById('importo').value = movimento.importo;
-        document.getElementById('provvigioni').value = movimento.provvigioni  '';
-        document.getElementById('arrotondamenti').value = movimento.arrotondamenti  '';
-        document.getElementById('abbuoni').value = movimento.abbuoni  '';
-        document.getElementById('personaAbbuono').value = movimento.personaAbbuono  '';
-        document.getElementById('uscite').value = movimento.uscite  '';
+        document.getElementById('provvigioni').value = movimento.provvigioni || '';
+        document.getElementById('arrotondamenti').value = movimento.arrotondamenti || '';
+        document.getElementById('abbuoni').value = movimento.abbuoni || '';
+        document.getElementById('personaAbbuono').value = movimento.personaAbbuono || '';
+        document.getElementById('uscite').value = movimento.uscite || '';
         document.getElementById('form-title').textContent = `Modifica Movimento`;
-        document.getElementById('form-buttons').innerHTML = `button type=submitSalva Modifichebuttonbutton type=button class=button-secondary onclick=annullaModifica()Annullabutton`;
+        document.getElementById('form-buttons').innerHTML = `<button type="submit">Salva Modifiche</button><button type="button" class="button-secondary" onclick="annullaModifica()">Annulla</button>`;
         aggiornaCampiCondizionali();
         togglePersonaAbbuono();
         window.scrollTo(0, 0);
     }
 
     function annullaModifica() {
-        document.getElementById('editingIndex').value = ;
-        document.getElementById('editingMovimentoId').value = ;
-        document.getElementById('editingMovimentoData').value = ;
+        document.getElementById('editingIndex').value = "";
+        document.getElementById('editingMovimentoId').value = "";
+        document.getElementById('editingMovimentoData').value = "";
         document.getElementById('formMovimento').reset();
-        document.getElementById('form-title').textContent = 2. Registrazione Movimento;
-        document.getElementById('form-buttons').innerHTML = `button type=submitAggiungi Movimentobutton`;
+        document.getElementById('form-title').textContent = "2. Registrazione Movimento";
+        document.getElementById('form-buttons').innerHTML = `<button type="submit">Aggiungi Movimento</button>`;
         aggiornaCampiCondizionali();
         togglePersonaAbbuono();
     }
 
     async function cancellaMovimento(index) {
-        if (!confirm('Sei sicuro di voler eliminare questo movimento')) return;
+        if (!confirm('Sei sicuro di voler eliminare questo movimento?')) return;
         
-        const isSimplifiedView = stato.compagniaSelezionata === 'ARAG'  stato.compagniaSelezionata === 'Helvetia';
-        const movimentoCancellato = isSimplifiedView  stato.movimentiVistaMensile[index]  stato.datiGiornoCorrente.movimenti[index];
+        const isSimplifiedView = stato.compagniaSelezionata === 'ARAG' || stato.compagniaSelezionata === 'Helvetia';
+        const movimentoCancellato = isSimplifiedView ? stato.movimentiVistaMensile[index] : stato.datiGiornoCorrente.movimenti[index];
         
         await rimuoviMovimentiSecondari(movimentoCancellato);
 
@@ -1430,23 +1305,23 @@ script
             const docRef = db.collection('giornaliCassa').doc(docId);
             const doc = await docRef.get();
             if(doc.exists) {
-                const movimentiOriginali = doc.data().movimenti  [];
-                const nuoviMovimenti = movimentiOriginali.filter(m = m.movimentoId !== movimentoCancellato.movimentoId);
-                await docRef.update({ movimenti nuoviMovimenti });
+                const movimentiOriginali = doc.data().movimenti || [];
+                const nuoviMovimenti = movimentiOriginali.filter(m => m.movimentoId !== movimentoCancellato.movimentoId);
+                await docRef.update({ movimenti: nuoviMovimenti });
             }
         } else {
-            let movimentiAggiornati = [...(stato.datiGiornoCorrente.movimenti  [])];
+            let movimentiAggiornati = [...(stato.datiGiornoCorrente.movimenti || [])];
             movimentiAggiornati.splice(index, 1);
-            await aggiornaDatiGiornoCorrente({ movimenti movimentiAggiornati });
+            await aggiornaDatiGiornoCorrente({ movimenti: movimentiAggiornati });
         }
     }
 
     async function salvaProvvigioneModificata(input, index) {
-        const nuovoValore = parseFloat(input.value)  0;
-        let movimentiAggiornati = [...(stato.datiGiornoCorrente.movimenti  [])];
+        const nuovoValore = parseFloat(input.value) || 0;
+        let movimentiAggiornati = [...(stato.datiGiornoCorrente.movimenti || [])];
         if (movimentiAggiornati[index]) {
             movimentiAggiornati[index].provvigioni = nuovoValore;
-            await aggiornaDatiGiornoCorrente({ movimenti movimentiAggiornati });
+            await aggiornaDatiGiornoCorrente({ movimenti: movimentiAggiornati });
         }
     }
 
@@ -1457,21 +1332,21 @@ script
         try {
             const docPrec = await db.collection('giornaliCassa').doc(docIdPrec).get();
             if (docPrec.exists) {
-                return docPrec.data().cassaTeorica  0;
+                return docPrec.data().cassaTeorica || 0;
             }
             return 0;
         } catch (error) {
-            console.error(Errore nel calcolo del riporto , error);
+            console.error("Errore nel calcolo del riporto: ", error);
             return 0;
         }
     }
 
-     ===============================================
-     IMPORT  EXPORT  CONVERSIONE
-     ===============================================
+    // ===============================================
+    // IMPORT / EXPORT / CONVERSIONE
+    // ===============================================
 
     async function esportaBackup() {
-        alert(L'esportazione è iniziata. Potrebbe richiedere qualche istante. Clicca OK per continuare.);
+        alert("L'esportazione è iniziata. Potrebbe richiedere qualche istante. Clicca OK per continuare.");
         const backupData = {};
         const collectionsToBackup = [
             'giornaliCassa', 'anticipi', 'abbuoni', 'bonifici_hdi_arag',
@@ -1482,11 +1357,11 @@ script
         try {
             for (const collName of collectionsToBackup) {
                 const snapshot = await db.collection(collName).get();
-                backupData[collName] = snapshot.docs.map(doc = ({ id doc.id, ...doc.data() }));
+                backupData[collName] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             }
 
             const datiJson = JSON.stringify(backupData, null, 2);
-            const blob = new Blob([datiJson], { type 'applicationjson' });
+            const blob = new Blob([datiJson], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -1495,34 +1370,34 @@ script
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            alert(Backup esportato con successo!);
+            alert("Backup esportato con successo!");
 
         } catch (error) {
-            console.error(Errore durante l'esportazione del backup, error);
-            alert(Si è verificato un errore durante l'esportazione.);
+            console.error("Errore durante l'esportazione del backup:", error);
+            alert("Si è verificato un errore durante l'esportazione.");
         }
     }
 
     function importaBackup() {
         const input = document.createElement('input');
         input.type = 'file';
-        input.accept = '.json,applicationjson';
-        input.onchange = e = {
+        input.accept = '.json,application/json';
+        input.onchange = e => {
             const file = e.target.files[0];
             if (!file) return;
 
             const reader = new FileReader();
-            reader.onload = async (event) = {
+            reader.onload = async (event) => {
                 try {
                     const datiImportati = JSON.parse(event.target.result);
-                    if (confirm(ATTENZIONE! Stai per sovrascrivere TUTTI i dati presenti nel database con quelli del file di backup. Questa operazione è IRREVERSIBILE. Sei assolutamente sicuro di voler procedere)) {
-                        alert(Importazione in corso. Non chiudere la pagina.);
+                    if (confirm("ATTENZIONE! Stai per sovrascrivere TUTTI i dati presenti nel database con quelli del file di backup. Questa operazione è IRREVERSIBILE. Sei assolutamente sicuro di voler procedere?")) {
+                        alert("Importazione in corso. Non chiudere la pagina.");
                         
                         const batch = db.batch();
                         
                         for (const collName in datiImportati) {
                             if (Array.isArray(datiImportati[collName])) {
-                                datiImportati[collName].forEach(item = {
+                                datiImportati[collName].forEach(item => {
                                     if(!item.id) {
                                         console.warn(`Oggetto senza ID nella collezione ${collName}, verrà saltato.`);
                                         return;
@@ -1535,12 +1410,12 @@ script
                             }
                         }
                         await batch.commit();
-                        alert(Backup importato con successo! La pagina verrà ricaricata.);
+                        alert("Backup importato con successo! La pagina verrà ricaricata.");
                         location.reload();
                     }
                 } catch (error) {
-                    console.error(Errore durante l'importazione del backup, error);
-                    alert(Impossibile importare il backup. Il file potrebbe essere corrotto o non avere il formato corretto.);
+                    console.error("Errore durante l'importazione del backup:", error);
+                    alert("Impossibile importare il backup. Il file potrebbe essere corrotto o non avere il formato corretto.");
                 }
             };
             reader.readAsText(file);
@@ -1550,41 +1425,41 @@ script
     
     function convertiVecchioBackup() {
         const fileInput = document.getElementById('vecchio-backup-input');
-        fileInput.onchange = e = {
+        fileInput.onchange = e => {
             const file = e.target.files[0];
             if (!file) return;
             const reader = new FileReader();
-            reader.onload = event = {
+            reader.onload = event => {
                 try {
                     const vecchioBackup = JSON.parse(event.target.result);
                     const nuovoBackup = {
-                        giornaliCassa [],
-                        promemoria vecchioBackup.promemoria  [],
-                        riattivazioni_vittoria vecchioBackup.riattivazioni_vittoria  [],
-                        anticipi [], abbuoni [], bonifici_hdi_arag [], pos_hdi_arag [],
-                        bonifici_allianz [], bonifici_vittoria []
+                        "giornaliCassa": [],
+                        "promemoria": vecchioBackup.promemoria || [],
+                        "riattivazioni_vittoria": vecchioBackup.riattivazioni_vittoria || [],
+                        "anticipi": [], "abbuoni": [], "bonifici_hdi_arag": [], "pos_hdi_arag": [],
+                        "bonifici_allianz": [], "bonifici_vittoria": []
                     };
                     
                     const compagnie = ['Allianz', 'HDI', 'Vittoria', 'ARAG', 'Helvetia'];
                     
-                    compagnie.forEach(compagnia = {
-                        const datiDiretti = vecchioBackup[compagnia]  {};
-                        const datiMovimenti = (vecchioBackup.datiMovimenti  {})[compagnia]  {};
+                    compagnie.forEach(compagnia => {
+                        const datiDiretti = vecchioBackup[compagnia] || {};
+                        const datiMovimenti = (vecchioBackup.datiMovimenti || {})[compagnia] || {};
                         const registriGiornalieri = {...datiDiretti, ...datiMovimenti};
                         
                         for (const dataKey in registriGiornalieri) {
                             if (Object.prototype.hasOwnProperty.call(registriGiornalieri, dataKey)) {
                                 const datiGiorno = registriGiornalieri[dataKey];
                                 const docId = `${compagnia}_${dataKey}`;
-                                const dateObj = new Date(dataKey.replace(-g, ''));
+                                const dateObj = new Date(dataKey.replace(/-/g, '/'));
                                 
                                 const nuovoDoc = {
                                     ...datiGiorno,
-                                    id docId,
-                                    compagnia compagnia,
-                                    dataKey dataKey,
-                                    anno dateObj.getFullYear(),
-                                    mese dateObj.getMonth()
+                                    id: docId,
+                                    compagnia: compagnia,
+                                    dataKey: dataKey,
+                                    anno: dateObj.getFullYear(),
+                                    mese: dateObj.getMonth()
                                 };
                                 nuovoBackup.giornaliCassa.push(nuovoDoc);
                             }
@@ -1592,7 +1467,7 @@ script
                     });
 
                     const datiJson = JSON.stringify(nuovoBackup, null, 2);
-                    const blob = new Blob([datiJson], { type 'applicationjson' });
+                    const blob = new Blob([datiJson], { type: 'application/json' });
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
@@ -1602,26 +1477,26 @@ script
                     document.body.removeChild(a);
                     URL.revokeObjectURL(url);
                     
-                    alert(Conversione completata! Il file 'backup_convertito_per_import.json' è stato scaricato.nOra puoi usare la funzione 'Importa' (in alto a destra) con questo nuovo file.);
+                    alert("Conversione completata! Il file 'backup_convertito_per_import.json' è stato scaricato.\nOra puoi usare la funzione 'Importa' (in alto a destra) con questo nuovo file.");
 
                 } catch (error) {
-                    console.error(Errore durante la conversione del backup, error);
-                    alert(Impossibile convertire il file. Potrebbe non essere un backup valido o essere corrotto.);
+                    console.error("Errore durante la conversione del backup:", error);
+                    alert("Impossibile convertire il file. Potrebbe non essere un backup valido o essere corrotto.");
                 }
             };
             reader.readAsText(file);
         };
-        alert(Seleziona il tuo vecchio file di backup per la conversione.);
+        alert("Seleziona il tuo vecchio file di backup per la conversione.");
         fileInput.click();
     }
     
     async function sincronizzaDatiSecondari() {
-        if (!confirm(ATTENZIONE Questa operazione leggerà tutti i movimenti di cassa e rigenererà i dati delle 'Altre Funzioni' (Anticipi, Abbuoni, Bonifici, etc.).nnL'operazione è sicura ma potrebbe richiedere alcuni minuti.nnContinuare)) {
+        if (!confirm("ATTENZIONE: Questa operazione leggerà tutti i movimenti di cassa e rigenererà i dati delle 'Altre Funzioni' (Anticipi, Abbuoni, Bonifici, etc.).\n\nL'operazione è sicura ma potrebbe richiedere alcuni minuti.\n\nContinuare?")) {
             return;
         }
 
         try {
-            alert(Sincronizzazione avviata. Non chiudere la pagina fino al messaggio di completamento.);
+            alert("Sincronizzazione avviata. Non chiudere la pagina fino al messaggio di completamento.");
             
             const giornaliSnapshot = await db.collection('giornaliCassa').get();
             let totalMovimenti = 0;
@@ -1630,7 +1505,7 @@ script
                 const datiGiorno = doc.data();
                 if (datiGiorno.movimenti && Array.isArray(datiGiorno.movimenti)) {
                     for (const movimento of datiGiorno.movimenti) {
-                         Assicura che ogni movimento abbia un ID univoco, creandolo se manca
+                        // Assicura che ogni movimento abbia un ID univoco, creandolo se manca
                         if (!movimento.movimentoId) {
                            movimento.movimentoId = `${new Date(datiGiorno.dataKey).getTime()}-${Math.random().toString(36).substring(2, 9)}`;
                         }
@@ -1640,94 +1515,94 @@ script
                 }
             }
             
-            alert(`Sincronizzazione completata con successo!nSono stati processati ${totalMovimenti} movimenti.`);
+            alert(`Sincronizzazione completata con successo!\nSono stati processati ${totalMovimenti} movimenti.`);
 
         } catch (error) {
-            console.error(Errore durante la sincronizzazione dei dati secondari, error);
-            alert(`Si è verificato un errore durante la sincronizzazione ${error.message}`);
+            console.error("Errore durante la sincronizzazione dei dati secondari:", error);
+            alert(`Si è verificato un errore durante la sincronizzazione: ${error.message}`);
         }
     }
 
 
-     =========================================================
-     LOGICA DI SINCRONIZZAZIONE MOVIMENTI
-     =========================================================
+    // =========================================================
+    // LOGICA DI SINCRONIZZAZIONE MOVIMENTI
+    // =========================================================
 
     async function gestisciMovimentiSecondari(movimento, dataKey, compagnia) {
         if (!movimento.movimentoId) return;
         const docId = movimento.movimentoId;
         const baseData = {
-            dataKey dataKey,
-            compagnia compagnia,
-            nomeCliente movimento.nomeCliente,
-            numeroPolizza movimento.numeroPolizza,
-            isAutomatic true,
-            sourceJournalDate dataKey,
-            lastModifiedBy stato.datiUtente.displayName  'Sistema',
-            lastModifiedAt firebase.firestore.FieldValue.serverTimestamp()
+            dataKey: dataKey,
+            compagnia: compagnia,
+            nomeCliente: movimento.nomeCliente,
+            numeroPolizza: movimento.numeroPolizza,
+            isAutomatic: true,
+            sourceJournalDate: dataKey,
+            lastModifiedBy: stato.datiUtente?.displayName || 'Sistema',
+            lastModifiedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
 
-         1. Gestione Anticipi
+        // 1. Gestione Anticipi
         if (movimento.metodologia === 'Anticipo') {
-            await db.collection('anticipi').doc(docId).set({ ...baseData, importo movimento.importo, tipoAnticipo movimento.tipoAnticipo, anticipoDi '', note '' }, { merge true });
+            await db.collection('anticipi').doc(docId).set({ ...baseData, importo: movimento.importo, tipoAnticipo: movimento.tipoAnticipo, anticipoDi: '', note: '' }, { merge: true });
         } else {
-            await db.collection('anticipi').doc(docId).delete().catch(() = {});
+            await db.collection('anticipi').doc(docId).delete().catch(() => {});
         }
 
-         2. Gestione Abbuoni
-        if ((movimento.abbuoni  0)  0) {
-            await db.collection('abbuoni').doc(docId).set({ ...baseData, abbuoni movimento.abbuoni, personaAbbuono movimento.personaAbbuono, note '' }, { merge true });
+        // 2. Gestione Abbuoni
+        if ((movimento.abbuoni || 0) > 0) {
+            await db.collection('abbuoni').doc(docId).set({ ...baseData, abbuoni: movimento.abbuoni, personaAbbuono: movimento.personaAbbuono, note: '' }, { merge: true });
         } else {
-            await db.collection('abbuoni').doc(docId).delete().catch(() = {});
+            await db.collection('abbuoni').doc(docId).delete().catch(() => {});
         }
 
-         3. Gestione Bonifici e POS
+        // 3. Gestione Bonifici e POS
         let targetCollection = null;
         if (movimento.metodologia === 'Bonifico') {
-            if (compagnia === 'HDI'  compagnia === 'ARAG') targetCollection = 'bonifici_hdi_arag';
+            if (compagnia === 'HDI' || compagnia === 'ARAG') targetCollection = 'bonifici_hdi_arag';
             else if (compagnia === 'Allianz') targetCollection = 'bonifici_allianz';
             else if (compagnia === 'Vittoria') targetCollection = 'bonifici_vittoria';
         } else if (movimento.metodologia === 'POS') {
-            if (compagnia === 'HDI'  compagnia === 'ARAG') targetCollection = 'pos_hdi_arag';
+            if (compagnia === 'HDI' || compagnia === 'ARAG') targetCollection = 'pos_hdi_arag';
         }
         const allCollections = ['bonifici_hdi_arag', 'bonifici_allianz', 'bonifici_vittoria', 'pos_hdi_arag'];
         for (const coll of allCollections) {
             if (coll !== targetCollection) {
-                await db.collection(coll).doc(docId).delete().catch(() = {});
+                await db.collection(coll).doc(docId).delete().catch(() => {});
             }
         }
         if (targetCollection) {
-            await db.collection(targetCollection).doc(docId).set({ ...baseData, importo movimento.importo, note '' }, { merge true });
+            await db.collection(targetCollection).doc(docId).set({ ...baseData, importo: movimento.importo, note: '' }, { merge: true });
         }
     }
 
     async function rimuoviMovimentiSecondari(movimento) {
-        if (!movimento  !movimento.movimentoId) return;
+        if (!movimento || !movimento.movimentoId) return;
         const docId = movimento.movimentoId;
         const collections = ['anticipi', 'abbuoni', 'bonifici_hdi_arag', 'pos_hdi_arag', 'bonifici_allianz', 'bonifici_vittoria'];
         for (const coll of collections) {
             try {
                 await db.collection(coll).doc(docId).delete();
-            } catch (error) {  Ignora errori se il documento non esiste  }
+            } catch (error) { /* Ignora errori se il documento non esiste */ }
         }
     }
 
 
-     ===============================================
-     SISTEMA GESTIONE TABELLE ALTRE FUNZIONI
-     ===============================================
+    // ===============================================
+    // SISTEMA GESTIONE TABELLE "ALTRE FUNZIONI"
+    // ===============================================
     let datiTabellaCorrente = [];
     let configTabellaCorrente = {};
     
     const configsTabelle = {
-        'anticipi' { type 'anticipi', title 'Gestione Anticipi', columns { dataKey 'Data', compagnia 'Compagnia', nomeCliente 'Cliente', numeroPolizza 'Polizza', importo 'Importo (€)', tipoAnticipo 'Tipo Anticipo', anticipoDi 'Anticipo di', note 'Note', dataEstinzione 'Data Estinzione', incassato 'Incassato' }, formFields { dataKey 'date', compagnia 'text', nomeCliente 'text', numeroPolizza 'text', importo 'number', tipoAnticipo 'text', anticipoDi 'text', note 'text', dataEstinzione 'date' }, dataSource 'anticipi', filterByDateOn 'dataKey', searchClientOn 'nomeCliente', editableFieldsForAutomatic ['anticipoDi', 'note', 'dataEstinzione', 'incassato'] },
-        'abbuoni' { type 'abbuoni', title 'Gestione Abbuoni', columns { dataKey 'Data', compagnia 'Compagnia', nomeCliente 'Cliente', numeroPolizza 'Polizza', abbuoni 'Importo Abbuono (€)', personaAbbuono 'Effettuato da', note 'Note', abbuonoRegolato 'Regolato' }, formFields { dataKey 'date', compagnia 'text', nomeCliente 'text', numeroPolizza 'text', abbuoni 'number', personaAbbuono 'text', note 'text' }, dataSource 'abbuoni', filterByDateOn 'dataKey', searchClientOn 'nomeCliente', editableFieldsForAutomatic ['note', 'abbuonoRegolato'] },
-        'bonifici_hdi_arag' { type 'bonifici_hdi_arag', title 'Gestione Bonifici (HDIARAG)', columns { dataKey 'Data', compagnia 'Compagnia', nomeCliente 'Cliente', numeroPolizza 'Polizza', importo 'Importo (€)', note 'Note' }, formFields { dataKey 'date', compagnia 'text', nomeCliente 'text', numeroPolizza 'text', importo 'number', note 'text' }, dataSource 'bonifici_hdi_arag', filterByDateOn 'dataKey', searchClientOn 'nomeCliente', editableFieldsForAutomatic ['note'] },
-        'pos_hdi_arag' { type 'pos_hdi_arag', title 'Gestione POS (HDIARAG)', columns { dataKey 'Data', compagnia 'Compagnia', nomeCliente 'Cliente', numeroPolizza 'Polizza', importo 'Importo (€)', note 'Note', dataEstinzione 'Data Estinzione', incassato 'Incassato' }, formFields { dataKey 'date', compagnia 'text', nomeCliente 'text', numeroPolizza 'text', importo 'number', note 'text', dataEstinzione 'date' }, dataSource 'pos_hdi_arag', filterByDateOn 'dataKey', searchClientOn 'nomeCliente', editableFieldsForAutomatic ['note', 'dataEstinzione', 'incassato'] },
-        'bonifici_allianz' { type 'bonifici_allianz', title 'Gestione Bonifici (Allianz)', columns { dataKey 'Data', compagnia 'Compagnia', nomeCliente 'Cliente', numeroPolizza 'Polizza', importo 'Importo (€)', note 'Note' }, formFields { dataKey 'date', compagnia 'text', nomeCliente 'text', numeroPolizza 'text', importo 'number', note 'text' }, dataSource 'bonifici_allianz', filterByDateOn 'dataKey', searchClientOn 'nomeCliente', editableFieldsForAutomatic ['note'] },
-        'bonifici_vittoria' { type 'bonifici_vittoria', title 'Gestione Bonifici (Vittoria)', columns { dataKey 'Data', compagnia 'Compagnia', nomeCliente 'Cliente', numeroPolizza 'Polizza', importo 'Importo (€)', note 'Note' }, formFields { dataKey 'date', compagnia 'text', nomeCliente 'text', numeroPolizza 'text', importo 'number', note 'text' }, dataSource 'bonifici_vittoria', filterByDateOn 'dataKey', searchClientOn 'nomeCliente', editableFieldsForAutomatic ['note'] },
-        'riattivazioni_vittoria' { type 'riattivazioni_vittoria', title 'Gestione Riattivazioni Vittoria', columns { contraente 'CONTRAENTE', nPolizza 'N° POLIZZA', targa 'TARGA', dataSospensione 'DATA SOSPENSIONE', dataRiattivazione 'DATA RIATTIVAZIONE', note 'NOTE', riattivata 'RIATTIVATA' }, formFields { contraente 'text', nPolizza 'text', targa 'text', dataSospensione 'date', dataRiattivazione 'date', note 'text' }, dataSource 'riattivazioni_vittoria', filterByDateOn 'dataSospensione', searchClientOn 'contraente' },
-        'promemoria' { type 'promemoria', title 'Gestione Promemoria', columns { nota 'NOTA PROMEMORIA', utente 'UTENTE', data 'DATA', fatto 'FATTO' }, formFields { data 'date', utente 'text', nota 'textarea' }, dataSource 'promemoria', filterByDateOn 'data', searchClientOn 'utente' }
+        'anticipi': { type: 'anticipi', title: 'Gestione Anticipi', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', tipoAnticipo: 'Tipo Anticipo', anticipoDi: 'Anticipo di', note: 'Note', dataEstinzione: 'Data Estinzione', incassato: 'Incassato' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', tipoAnticipo: 'text', anticipoDi: 'text', note: 'text', dataEstinzione: 'date' }, dataSource: 'anticipi', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['anticipoDi', 'note', 'dataEstinzione', 'incassato'] },
+        'abbuoni': { type: 'abbuoni', title: 'Gestione Abbuoni', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', abbuoni: 'Importo Abbuono (€)', personaAbbuono: 'Effettuato da', note: 'Note', abbuonoRegolato: 'Regolato' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', abbuoni: 'number', personaAbbuono: 'text', note: 'text' }, dataSource: 'abbuoni', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['note', 'abbuonoRegolato'] },
+        'bonifici_hdi_arag': { type: 'bonifici_hdi_arag', title: 'Gestione Bonifici (HDI/ARAG)', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', note: 'Note' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', note: 'text' }, dataSource: 'bonifici_hdi_arag', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['note'] },
+        'pos_hdi_arag': { type: 'pos_hdi_arag', title: 'Gestione POS (HDI/ARAG)', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', note: 'Note', dataEstinzione: 'Data Estinzione', incassato: 'Incassato' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', note: 'text', dataEstinzione: 'date' }, dataSource: 'pos_hdi_arag', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['note', 'dataEstinzione', 'incassato'] },
+        'bonifici_allianz': { type: 'bonifici_allianz', title: 'Gestione Bonifici (Allianz)', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', note: 'Note' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', note: 'text' }, dataSource: 'bonifici_allianz', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['note'] },
+        'bonifici_vittoria': { type: 'bonifici_vittoria', title: 'Gestione Bonifici (Vittoria)', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', note: 'Note' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', note: 'text' }, dataSource: 'bonifici_vittoria', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['note'] },
+        'riattivazioni_vittoria': { type: 'riattivazioni_vittoria', title: 'Gestione Riattivazioni Vittoria', columns: { contraente: 'CONTRAENTE', nPolizza: 'N° POLIZZA', targa: 'TARGA', dataSospensione: 'DATA SOSPENSIONE', dataRiattivazione: 'DATA RIATTIVAZIONE', note: 'NOTE', riattivata: 'RIATTIVATA' }, formFields: { contraente: 'text', nPolizza: 'text', targa: 'text', dataSospensione: 'date', dataRiattivazione: 'date', note: 'text' }, dataSource: 'riattivazioni_vittoria', filterByDateOn: 'dataSospensione', searchClientOn: 'contraente' },
+        'promemoria': { type: 'promemoria', title: 'Gestione Promemoria', columns: { nota: 'NOTA PROMEMORIA', utente: 'UTENTE', data: 'DATA', fatto: 'FATTO' }, formFields: { data: 'date', utente: 'text', nota: 'textarea' }, dataSource: 'promemoria', filterByDateOn: 'data', searchClientOn: 'utente' }
     };
     
     function mostraTabella(tipo) {
@@ -1738,7 +1613,7 @@ script
         
         let query = db.collection(configTabellaCorrente.dataSource);
 
-        if (tipo === 'bonifici_hdi_arag'  tipo === 'pos_hdi_arag') {
+        if (tipo === 'bonifici_hdi_arag' || tipo === 'pos_hdi_arag') {
             query = query.where('compagnia', 'in', ['HDI', 'ARAG']);
         } else if (tipo === 'bonifici_allianz') {
             query = query.where('compagnia', '==', 'Allianz');
@@ -1746,10 +1621,10 @@ script
             query = query.where('compagnia', '==', 'Vittoria');
         }
         
-        unsubscribeGenericTable = query.onSnapshot(snapshot = {
-            datiTabellaCorrente = snapshot.docs.map(doc = ({ id doc.id, ...doc.data() }));
+        unsubscribeGenericTable = query.onSnapshot(snapshot => {
+            datiTabellaCorrente = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             applicaFiltriTabella();
-        }, error = console.error(`Errore nel listener della tabella ${tipo} `, error));
+        }, error => console.error(`Errore nel listener della tabella ${tipo}: `, error));
 
         document.getElementById('generic-modal-title').textContent = configTabellaCorrente.title;
         popolaFiltri(datiTabellaCorrente);
@@ -1773,14 +1648,9 @@ script
         const dateColumns = ['dataEstinzione', 'dataSospensione', 'dataRiattivazione', 'data', 'dataKey'];
         const booleanFields = ['incassato', 'riattivata', 'abbuonoRegolato', 'fatto'];
         const numericFields = ['importo', 'abbuoni'];
-        const editableForAuto = configTabellaCorrente.editableFieldsForAutomatic  [];
+        const editableForAuto = configTabellaCorrente.editableFieldsForAutomatic || [];
 
-         Add headers dynamically and store labels for mobile view
-        const labels = {};
-        for(const key in configTabellaCorrente.columns){
-            labels[key] = configTabellaCorrente.columns[key];
-        }
-
+        // Add new "Origine" header
         const thOrigine = document.createElement('th');
         thOrigine.textContent = 'Origine';
         thOrigine.classList.add('col-origine');
@@ -1796,50 +1666,52 @@ script
         headerRow.appendChild(document.createElement('th')).textContent = 'Azioni';
 
         const dateKeySort = configTabellaCorrente.filterByDateOn;
-        dati.sort((a, b) = new Date(b[dateKeySort]  0) - new Date(a[dateKeySort]  0));
+        dati.sort((a, b) => new Date(b[dateKeySort] || 0) - new Date(a[dateKeySort] || 0));
 
-        dati.forEach((d) = {
+        dati.forEach((d) => {
             const riga = tbody.insertRow();
             riga.dataset.id = d.id;
 
+            // Add new "Origine" cell with icon
             const cellOrigine = riga.insertCell();
             cellOrigine.classList.add('col-origine');
             cellOrigine.style.verticalAlign = 'middle';
             if (d.isAutomatic) {
-                cellOrigine.innerHTML = `i class=fas fa-sync-alt title=Origine Giornale Cassai`;
+                cellOrigine.innerHTML = `<i class="fas fa-sync-alt" title="Origine: Giornale Cassa"></i>`;
             } else {
-                cellOrigine.innerHTML = `i class=fas fa-pencil-alt title=Origine Manualei`;
+                cellOrigine.innerHTML = `<i class="fas fa-pencil-alt" title="Origine: Manuale"></i>`;
             }
             
             for (const key in configTabellaCorrente.columns) {
                 const cell = riga.insertCell();
                 cell.dataset.property = key;
-                cell.dataset.label = labels[key];  Add label for mobile view
-                let content = d[key]  '';
-                const isEditable = !d.isAutomatic  editableFieldsForAutomatic.includes(key);
+                let content = d[key] || '';
+                const isEditable = !d.isAutomatic || editableForAuto.includes(key);
 
                 if (dateColumns.includes(key)) cell.classList.add('col-date');
 
                 if (dateColumns.includes(key)) {
-                    cell.innerHTML = `input type=date value=${content} onchange=salvaModificaGenerica(this) ${!isEditable  'readonly style=background-color#eee;'  ''}`;
+                    cell.innerHTML = `<input type="date" value="${content}" onchange="salvaModificaGenerica(this)" ${!isEditable ? 'readonly style="background-color:#eee;"' : ''}>`;
                 } else if (booleanFields.includes(key)) {
-                    cell.innerHTML = `input type=checkbox ${content  'checked'  ''} onchange=salvaModificaGenerica(this) ${!isEditable  'disabled'  ''}`;
+                    cell.innerHTML = `<input type="checkbox" ${content ? 'checked' : ''} onchange="salvaModificaGenerica(this)" ${!isEditable ? 'disabled' : ''}>`;
+                    cell.style.textAlign = 'center';
                 } else {
                     if (numericFields.includes(key)) {
-                        cell.textContent = (parseFloat(content)  0).toFixed(2);
+                        cell.textContent = (parseFloat(content) || 0).toFixed(2);
                     } else {
                         cell.textContent = content;
                     }
                     if (isEditable) {
                         cell.contentEditable = true;
-                        cell.onblur = (e) = salvaModificaGenerica(e.target);
+                        cell.onblur = (e) => salvaModificaGenerica(e.target);
                     }
                 }
             }
             
+            // Add action cell with delete button for all rows
             const cellaAzioni = riga.insertCell();
-            cellaAzioni.dataset.label = Azioni;
-            cellaAzioni.innerHTML = `button class=button-delete onclick=cancellaMovimentoGenerico(this)Eliminabutton`;
+            cellaAzioni.style.textAlign = 'center';
+            cellaAzioni.innerHTML = `<button class="button-delete" onclick="cancellaMovimentoGenerico(this)">Elimina</button>`;
             
             aggiornaStileRiga(riga, d);
         });
@@ -1856,20 +1728,20 @@ script
         if (el.type === 'checkbox') {
             valore = el.checked;
         } else if (el.isContentEditable) {
-            valore = (proprieta === 'importo'  proprieta === 'abbuoni')  (parseFloat(el.textContent)  0)  el.textContent;
+            valore = (proprieta === 'importo' || proprieta === 'abbuoni') ? (parseFloat(el.textContent) || 0) : el.textContent;
         } else {
             valore = el.value;
         }
         
         try {
             await db.collection(configTabellaCorrente.dataSource).doc(docId).update({
-                [proprieta] valore,
-                lastModifiedBy stato.datiUtente.displayName,
-                lastModifiedAt firebase.firestore.FieldValue.serverTimestamp()
+                [proprieta]: valore,
+                lastModifiedBy: stato.datiUtente.displayName,
+                lastModifiedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
             mostraNotificaTemporanea('generic-modal-notification', 'Salvataggio riuscito!', 'success');
         } catch (error) {
-            console.error(Errore salvataggio modifica generica , error);
+            console.error("Errore salvataggio modifica generica: ", error);
             mostraNotificaTemporanea('generic-modal-notification', 'Errore nel salvataggio.', 'error');
         }
     }
@@ -1879,15 +1751,15 @@ script
         const docId = riga.dataset.id;
         if (!docId) return;
 
-        const movimento = datiTabellaCorrente.find(d = d.id === docId);
+        const movimento = datiTabellaCorrente.find(d => d.id === docId);
         if (!movimento) {
-            alert(Errore impossibile trovare il movimento da eliminare.);
+            alert("Errore: impossibile trovare il movimento da eliminare.");
             return;
         }
 
-        let confirmationMessage = 'Sei sicuro di voler eliminare definitivamente questo elemento';
+        let confirmationMessage = 'Sei sicuro di voler eliminare definitivamente questo elemento?';
         if (movimento.isAutomatic) {
-            confirmationMessage = ATTENZIONE Questo è un movimento automatico.nnEliminandolo da qui, verrà cancellato DEFINITIVAMENTE anche dal giornale di cassa originale.nnSei assolutamente sicuro di voler procedere;
+            confirmationMessage = "ATTENZIONE: Questo è un movimento automatico.\n\nEliminandolo da qui, verrà cancellato DEFINITIVAMENTE anche dal giornale di cassa originale.\n\nSei assolutamente sicuro di voler procedere?";
         }
 
         if (confirm(confirmationMessage)) {
@@ -1895,34 +1767,37 @@ script
                 if (movimento.isAutomatic) {
                     const sourceDate = movimento.sourceJournalDate;
                     const sourceCompagnia = movimento.compagnia;
-                    if (!sourceDate  !sourceCompagnia) {
-                        throw new Error(Dati di origine mancanti, impossibile eliminare dal giornale principale.);
+                    if (!sourceDate || !sourceCompagnia) {
+                        throw new Error("Dati di origine mancanti, impossibile eliminare dal giornale principale.");
                     }
 
                     const journalDocId = `${sourceCompagnia}_${sourceDate}`;
                     const journalDocRef = db.collection('giornaliCassa').doc(journalDocId);
                     
-                    await db.runTransaction(async (transaction) = {
+                    // The main logic is to remove the item from the source journal.
+                    await db.runTransaction(async (transaction) => {
                         const journalDoc = await transaction.get(journalDocRef);
                         if (journalDoc.exists) {
                             const datiGiorno = journalDoc.data();
-                            const movimentiAggiornati = (datiGiorno.movimenti  []).filter(m = m.movimentoId !== docId);
-                            transaction.update(journalDocRef, { movimenti movimentiAggiornati });
+                            const movimentiAggiornati = (datiGiorno.movimenti || []).filter(m => m.movimentoId !== docId);
+                            transaction.update(journalDocRef, { movimenti: movimentiAggiornati });
                         }
                     });
                     
+                    // Also explicitly delete from the secondary collection to ensure immediate UI update and cleanup.
                     await db.collection(configTabellaCorrente.dataSource).doc(docId).delete();
-                    await rimuoviMovimentiSecondari({ movimentoId docId });
+                    await rimuoviMovimentiSecondari({ movimentoId: docId });
 
 
                 } else {
+                    // It's a manual entry, just delete it from its own table.
                     await db.collection(configTabellaCorrente.dataSource).doc(docId).delete();
                 }
                 mostraNotificaTemporanea('generic-modal-notification', 'Elemento eliminato con successo.', 'success');
             } catch (error) {
-                console.error(Errore durante l'eliminazione, error);
-                mostraNotificaTemporanea('generic-modal-notification', `Errore ${error.message}`, 'error');
-                alert(`Impossibile eliminare l'elemento ${error.message}`);
+                console.error("Errore durante l'eliminazione:", error);
+                mostraNotificaTemporanea('generic-modal-notification', `Errore: ${error.message}`, 'error');
+                alert(`Impossibile eliminare l'elemento: ${error.message}`);
             }
         }
     }
@@ -1934,16 +1809,16 @@ script
         
         let formHtml = '';
         if (!config.formFields) {
-            formHtml = 'pFunzione di aggiunta non configurata.p';
+            formHtml = '<p>Funzione di aggiunta non configurata.</p>';
         } else {
             for(const field in config.formFields) {
                 const type = config.formFields[field];
-                const label = config.columns[field]  field.charAt(0).toUpperCase() + field.slice(1);
-                formHtml += `label${label}label`;
+                const label = config.columns[field] || field.charAt(0).toUpperCase() + field.slice(1);
+                formHtml += `<label>${label}:</label>`;
                 if (type === 'textarea') {
-                    formHtml += `textarea id=add-${field} rows=4 style=width 100%; padding 10px;textarea`;
+                    formHtml += `<textarea id="add-${field}" rows="4" style="width: 100%; padding: 10px;"></textarea>`;
                 } else {
-                    formHtml += `input type=${type} id=add-${field} ${type === 'date'  `value=${formatDate(new Date())}`  ''} required`;
+                    formHtml += `<input type="${type}" id="add-${field}" ${type === 'date' ? `value="${formatDate(new Date())}"` : ''} required>`;
                 }
             }
         }
@@ -1956,15 +1831,15 @@ script
         if (!config.formFields) return;
 
         let nuovoElemento = {
-            createdBy stato.datiUtente.displayName,
-            createdAt new Date().toISOString(),
-            isAutomatic false
+            createdBy: stato.datiUtente.displayName,
+            createdAt: new Date().toISOString(),
+            isAutomatic: false
         };
         
         for(const field in config.formFields) {
             const input = document.getElementById(`add-${field}`);
             if (input) {
-                nuovoElemento[field] = input.type === 'number'  parseFloat(input.value)  0  input.value;
+                nuovoElemento[field] = input.type === 'number' ? parseFloat(input.value) || 0 : input.value;
             }
         }
         
@@ -1980,16 +1855,16 @@ script
         const clientKey = configTabellaCorrente.searchClientOn;
 
         let datiFiltrati = datiTabellaCorrente;
-        if (anno !== 'tutti') datiFiltrati = datiFiltrati.filter(d = d[dateKey] && new Date(d[dateKey].replace(-g, '')).getFullYear() == anno);
-        if (mese !== 'tutti') datiFiltrati = datiFiltrati.filter(d = d[dateKey] && new Date(d[dateKey].replace(-g, '')).getMonth() == mese);
-        if (clienteInput) datiFiltrati = datiFiltrati.filter(d = d[clientKey] && String(d[clientKey]).toLowerCase().includes(clienteInput));
+        if (anno !== 'tutti') datiFiltrati = datiFiltrati.filter(d => d[dateKey] && new Date(d[dateKey].replace(/-/g, '/')).getFullYear() == anno);
+        if (mese !== 'tutti') datiFiltrati = datiFiltrati.filter(d => d[dateKey] && new Date(d[dateKey].replace(/-/g, '/')).getMonth() == mese);
+        if (clienteInput) datiFiltrati = datiFiltrati.filter(d => d[clientKey] && String(d[clientKey]).toLowerCase().includes(clienteInput));
         
         popolaTabellaGenerica(datiFiltrati);
     }
     
-     ===============================================
-     FUNZIONI DI UTILITY
-     ===============================================
+    // ===============================================
+    // FUNZIONI DI UTILITY
+    // ===============================================
 
     function formatDate(date) {
         if (!date) return null;
@@ -2003,7 +1878,7 @@ script
     function getGiornoPrecedenteLavorativo(data) {
         let dataPrec = new Date(data);
         dataPrec.setDate(data.getDate() - 1);
-        while (dataPrec.getDay() === 0  dataPrec.getDay() === 6) {
+        while (dataPrec.getDay() === 0 || dataPrec.getDay() === 6) {
             dataPrec.setDate(dataPrec.getDate() - 1);
         }
         return dataPrec;
@@ -2017,52 +1892,52 @@ script
         let printHTML = '';
 
         const riepilogoMovimentiBox = document.getElementById('box-riepilogo-movimenti').cloneNode(true);
-        riepilogoMovimentiBox.querySelectorAll('thlast-child, tdlast-child').forEach(el = el.remove());
+        riepilogoMovimentiBox.querySelectorAll('th:last-child, td:last-child').forEach(el => el.remove());
         if (isSimplified) {
             const cassaTeoricaBox = riepilogoMovimentiBox.querySelector('.riepilogo-totali.col-cassa-teorica');
             if (cassaTeoricaBox) cassaTeoricaBox.style.display = 'none';
         }
         printHTML += `
-            div class=print-page
-                div class=print-header
-                    h1${mainTitle}h1
-                    h2${dateValue}h2
-                div
+            <div class="print-page">
+                <div class="print-header">
+                    <h1>${mainTitle}</h1>
+                    <h2>${dateValue}</h2>
+                </div>
                 ${riepilogoMovimentiBox.outerHTML}
-            div`;
+            </div>`;
 
         if (!isSimplified) {
             const conteggioAssegniBoxClone = document.getElementById('box-conteggio-assegni').cloneNode(true);
             const verificaFinaleBoxClone = document.getElementById('box-verifica-finale').cloneNode(true);
 
-            conteggioAssegniBoxClone.querySelector('button').remove();
-            verificaFinaleBoxClone.querySelector('button').remove();
+            conteggioAssegniBoxClone.querySelector('button')?.remove();
+            verificaFinaleBoxClone.querySelector('button')?.remove();
 
             const conteggioSoldiHTML = document.getElementById('conteggioBanconote').outerHTML + document.getElementById('conteggioMonete').outerHTML;
             const conteggioAssegniHTML = conteggioAssegniBoxClone.outerHTML;
             const verificaFinaleHTML = verificaFinaleBoxClone.outerHTML;
 
             printHTML += `
-                div class=print-page
-                    div class=print-header
-                        h1Dettaglio Conteggio e Verificah1
-                        h2${dateValue}h2
-                    div
-                    div class=conteggio-grid
-                        div class=conteggio-colonna
+                <div class="print-page">
+                    <div class="print-header">
+                        <h1>Dettaglio Conteggio e Verifica</h1>
+                        <h2>${dateValue}</h2>
+                    </div>
+                    <div class="conteggio-grid">
+                        <div class="conteggio-colonna">
                             ${conteggioSoldiHTML}
-                        div
-                        div class=conteggio-colonna
+                        </div>
+                        <div class="conteggio-colonna">
                             ${conteggioAssegniHTML}
-                        div
-                    div
+                        </div>
+                    </div>
                     ${verificaFinaleHTML}
-                div`;
+                </div>`;
         }
 
         printLayout.innerHTML = printHTML;
 
-        setTimeout(() = {
+        setTimeout(() => {
             window.print();
         }, 250);
     }
@@ -2073,31 +1948,31 @@ script
         const isVersamento = metodologia === 'Versamento';
 
         const fieldsToToggle = ['nomeCliente', 'numeroPolizza', 'importo', 'arrotondamenti', 'abbuoni', 'uscite'];
-        fieldsToToggle.forEach(id = {
+        fieldsToToggle.forEach(id => {
             const el = document.getElementById(id);
-            const label = document.querySelector(`label[for=${id}]`);
-            const display = isVersamento  'none'  'block';
+            const label = document.querySelector(`label[for="${id}"]`);
+            const display = isVersamento ? 'none' : 'block';
             if (el) el.style.display = display;
             if (label) label.style.display = display;
         });
 
-        document.getElementById('divVersamento').style.display = isVersamento  'block'  'none';
+        document.getElementById('divVersamento').style.display = isVersamento ? 'block' : 'none';
         document.getElementById('nomeCliente').required = !isVersamento;
         document.getElementById('importo').required = !isVersamento;
 
         if (isVersamento) {
-            ['divIncassoMultiplo', 'divTipoPosAllianz', 'divTipoAnticipo', 'divRientroMetodo', 'divNumeroAssegno', 'divProvvigioni', 'divPersonaAbbuono'].forEach(id = {
+            ['divIncassoMultiplo', 'divTipoPosAllianz', 'divTipoAnticipo', 'divRientroMetodo', 'divNumeroAssegno', 'divProvvigioni', 'divPersonaAbbuono'].forEach(id => {
                 document.getElementById(id).style.display = 'none';
             });
         } else {
             const isMultiplo = metodologia === 'Incasso Multiplo';
-            document.getElementById('divIncassoMultiplo').style.display = isMultiplo  'block'  'none';
-            document.getElementById('campi-standard').style.display = isMultiplo  'none'  'block';
+            document.getElementById('divIncassoMultiplo').style.display = isMultiplo ? 'block' : 'none';
+            document.getElementById('campi-standard').style.display = isMultiplo ? 'none' : 'block';
             
             if (isMultiplo) {
                 const opzioniBase = Array.from(document.getElementById('metodologia').options)
-                                        .filter(opt = !['Incasso Multiplo', 'Versamento'].includes(opt.value))
-                                        .map(opt = `option value=${opt.value}${opt.text}option`).join('');
+                                        .filter(opt => !['Incasso Multiplo', 'Versamento'].includes(opt.value))
+                                        .map(opt => `<option value="${opt.value}">${opt.text}</option>`).join('');
                 document.getElementById('metodologiaMultiplo1').innerHTML = opzioniBase;
                 document.getElementById('metodologiaMultiplo2').innerHTML = opzioniBase;
                 aggiornaCampiCondizionaliMultiplo(1);
@@ -2109,17 +1984,17 @@ script
             const compagnia = stato.compagniaSelezionata;
             const rientroMetodo = document.getElementById('rientroMetodo').value;
             const tipoAnticipo = document.getElementById('tipoAnticipo').value;
-            const showProvvigioni = (compagnia === 'HDI'  compagnia === 'Vittoria') && metodologia !== 'Rientro da Anticipo';
+            const showProvvigioni = (compagnia === 'HDI' || compagnia === 'Vittoria') && metodologia !== 'Rientro da Anticipo';
             const showRientro = metodologia === 'Rientro da Anticipo';
-            const showAssegno = metodologia === 'Assegno'  (showRientro && rientroMetodo === 'Assegno')  (metodologia === 'Anticipo' && tipoAnticipo === 'Anticipo Assegno');
+            const showAssegno = metodologia === 'Assegno' || (showRientro && rientroMetodo === 'Assegno') || (metodologia === 'Anticipo' && tipoAnticipo === 'Anticipo Assegno');
             const showTipoAnticipo = metodologia === 'Anticipo';
             const showTipoPosAllianz = metodologia === 'POS' && compagnia === 'Allianz';
             
-            document.getElementById('divProvvigioni').style.display = showProvvigioni  'block'  'none';
-            document.getElementById('divRientroMetodo').style.display = showRientro  'block'  'none';
-            document.getElementById('divNumeroAssegno').style.display = showAssegno  'block'  'none';
-            document.getElementById('divTipoAnticipo').style.display = showTipoAnticipo  'block'  'none';
-            document.getElementById('divTipoPosAllianz').style.display = showTipoPosAllianz  'block'  'none';
+            document.getElementById('divProvvigioni').style.display = showProvvigioni ? 'block' : 'none';
+            document.getElementById('divRientroMetodo').style.display = showRientro ? 'block' : 'none';
+            document.getElementById('divNumeroAssegno').style.display = showAssegno ? 'block' : 'none';
+            document.getElementById('divTipoAnticipo').style.display = showTipoAnticipo ? 'block' : 'none';
+            document.getElementById('divTipoPosAllianz').style.display = showTipoPosAllianz ? 'block' : 'none';
             
             if (!showProvvigioni) document.getElementById('provvigioni').value = '';
             if (!showAssegno) document.getElementById('numeroAssegno').value = '';
@@ -2127,14 +2002,14 @@ script
     }
 
     function togglePersonaAbbuono() {
-        const abbuoniVal = parseFloat(document.getElementById('abbuoni').value)  0;
-        document.getElementById('divPersonaAbbuono').style.display = abbuoniVal  0  'block'  'none';
-        if (abbuoniVal = 0) document.getElementById('personaAbbuono').value = '';
+        const abbuoniVal = parseFloat(document.getElementById('abbuoni').value) || 0;
+        document.getElementById('divPersonaAbbuono').style.display = abbuoniVal > 0 ? 'block' : 'none';
+        if (abbuoniVal <= 0) document.getElementById('personaAbbuono').value = '';
     }
 
     function calcolaImportoMultiplo() {
-        const importoTot = parseFloat(document.getElementById('importo').value)  0;
-        const importo1 = parseFloat(document.getElementById('importoMultiplo1').value)  0;
+        const importoTot = parseFloat(document.getElementById('importo').value) || 0;
+        const importo1 = parseFloat(document.getElementById('importoMultiplo1').value) || 0;
         document.getElementById('importoMultiplo2').value = (importoTot - importo1).toFixed(2);
     }
     
@@ -2143,9 +2018,9 @@ script
         const container = document.getElementById(`campiCondizionaliMultiplo${partNumber}`);
         let html = '';
         if (metodologia === 'Assegno') {
-            html = `labelNumero Assegnolabelinput type=text id=numeroAssegno_multiplo${partNumber}`;
+            html = `<label>Numero Assegno:</label><input type="text" id="numeroAssegno_multiplo${partNumber}">`;
         } else if (metodologia === 'POS' && stato.compagniaSelezionata === 'Allianz') {
-            html = `labelTipo POSlabelselect id=tipoPosAllianz_multiplo${partNumber}optionPOS DirezioneoptionoptionPOS Agenziaoptionselect`;
+            html = `<label>Tipo POS:</label><select id="tipoPosAllianz_multiplo${partNumber}"><option>POS Direzione</option><option>POS Agenzia</option></select>`;
         }
         container.innerHTML = html;
     }
@@ -2162,46 +2037,40 @@ script
     function aggiornaTabellaMovimenti(movimenti = []) {
         const tbody = document.getElementById('tabellaMovimenti').querySelector('tbody');
         tbody.innerHTML = '';
-        const headers = Array.from(document.querySelectorAll('#tabellaMovimenti th')).map(th = th.textContent);
-        
-        (movimenti  []).forEach((m, index) = {
-            const dataKeyOriginale = m.dataMovimento  formatDate(stato.dataSelezionata);
+        const showProvvigioni = stato.compagniaSelezionata === 'HDI' || stato.compagniaSelezionata === 'Vittoria';
+        (movimenti || []).forEach((m, index) => {
+            const dataKeyOriginale = m.dataMovimento || formatDate(stato.dataSelezionata);
             let impattoCassa = 0;
-            const isCashBased = ['Contanti', 'Assegno'].includes(m.metodologia)  (m.metodologia === 'Rientro da Anticipo' && ['Contanti', 'Assegno'].includes(m.rientroMetodo));
-            if (isCashBased) impattoCassa = (m.importo  0) + (m.arrotondamenti  0) - (m.abbuoni  0);
-            impattoCassa -= (m.uscite  0);
+            const isCashBased = ['Contanti', 'Assegno'].includes(m.metodologia) || (m.metodologia === 'Rientro da Anticipo' && ['Contanti', 'Assegno'].includes(m.rientroMetodo));
+            if (isCashBased) impattoCassa = (m.importo || 0) + (m.arrotondamenti || 0) - (m.abbuoni || 0);
+            impattoCassa -= (m.uscite || 0);
 
             let metodoDisplay = m.metodologia;
-            if (m.metodologia === 'Anticipo') metodoDisplay = `Anticipo (${m.tipoAnticipo  ''})`;
-            else if (m.metodologia === 'POS' && stato.compagniaSelezionata === 'Allianz') metodoDisplay = `POS (${m.tipoPosAllianz  ''})`;
-            else if (m.metodologia === 'Assegno'  (m.metodologia === 'Rientro da Anticipo' && m.rientroMetodo === 'Assegno')) metodoDisplay += ` ${m.numeroAssegno  ''}`;
-            else if (m.metodologia === 'Rientro da Anticipo') metodoDisplay += ` (${m.rientroMetodo  ''})`;
+            if (m.metodologia === 'Anticipo') metodoDisplay = `Anticipo (${m.tipoAnticipo || ''})`;
+            else if (m.metodologia === 'POS' && stato.compagniaSelezionata === 'Allianz') metodoDisplay = `POS (${m.tipoPosAllianz || ''})`;
+            else if (m.metodologia === 'Assegno' || (m.metodologia === 'Rientro da Anticipo' && m.rientroMetodo === 'Assegno')) metodoDisplay += ` ${m.numeroAssegno || ''}`;
+            else if (m.metodologia === 'Rientro da Anticipo') metodoDisplay += ` (${m.rientroMetodo || ''})`;
             
             const riga = tbody.insertRow();
             riga.innerHTML = `
-                td data-label=${headers[0]}${new Date(dataKeyOriginale.replace(-g, '')).toLocaleDateString('it-IT')}td
-                td data-label=${headers[1]}${m.nomeCliente  ''}td
-                td data-label=${headers[2]}${m.numeroPolizza  ''}td
-                td data-label=${headers[3]}${metodoDisplay  ''}td
-                td data-label=${headers[4]}${(m.importo  0).toFixed(2)}td
-                td data-label=${headers[5]} class=col-provvigioni provvigione-editabile onclick=rendiProvvigioneEditabile(this, ${index})${(m.provvigioni  0).toFixed(2)}td
-                td data-label=${headers[6]}${(m.arrotondamenti  0).toFixed(2)}td
-                td data-label=${headers[7]}${(m.abbuoni  0).toFixed(2)}td
-                td data-label=${headers[8]}${(m.uscite  0).toFixed(2)}td
-                td data-label=${headers[9]} class=col-impatto-cassastrong${impattoCassa.toFixed(2)}strongtd
-                td data-label=${headers[10]}
-                    button class=button-edit onclick=modificaMovimento(${index}) ${m.isSplit  m.metodologia === 'Versamento'  'disabled'  ''}Modificabutton
-                    button class=button-delete onclick=cancellaMovimento(${index})Eliminabutton
-                td`;
+                <td class="col-data-mensile">${new Date(dataKeyOriginale.replace(/-/g, '/')).toLocaleDateString('it-IT')}</td>
+                <td>${m.nomeCliente || ''}</td><td>${m.numeroPolizza || ''}</td><td>${metodoDisplay || ''}</td>
+                <td>${(m.importo || 0).toFixed(2)}</td>
+                <td class="col-provvigioni provvigione-editabile" onclick="rendiProvvigioneEditabile(this, ${index})">${(m.provvigioni || 0).toFixed(2)}</td>
+                <td>${(m.arrotondamenti || 0).toFixed(2)}</td><td>${(m.abbuoni || 0).toFixed(2)}</td><td>${(m.uscite || 0).toFixed(2)}</td>
+                <td class="col-impatto-cassa"><strong>${impattoCassa.toFixed(2)}</strong></td>
+                <td>
+                    <button class="button-edit" onclick="modificaMovimento(${index})" ${m.isSplit || m.metodologia === 'Versamento' ? 'disabled' : ''}>Modifica</button>
+                    <button class="button-delete" onclick="cancellaMovimento(${index})">Elimina</button>
+                </td>`;
         });
-        const showProvvigioni = stato.compagniaSelezionata === 'HDI'  stato.compagniaSelezionata === 'Vittoria';
-        document.querySelectorAll('.col-provvigioni').forEach(el = el.style.display = showProvvigioni  ''  'none');
+        document.querySelectorAll('.col-provvigioni').forEach(el => el.style.display = showProvvigioni ? '' : 'none');
     }
 
     function rendiProvvigioneEditabile(cell, index) {
         if (cell.querySelector('input')) return;
         const valoreCorrente = cell.textContent;
-        cell.innerHTML = `input type=number step=0.01 value=${valoreCorrente} style=width 80px; onblur=salvaProvvigioneModificata(this, ${index}) onkeydown=if(event.key === 'Enter') this.blur()`;
+        cell.innerHTML = `<input type="number" step="0.01" value="${valoreCorrente}" style="width: 80px;" onblur="salvaProvvigioneModificata(this, ${index})" onkeydown="if(event.key === 'Enter') this.blur()"/>`;
         cell.querySelector('input').focus();
     }
     
@@ -2211,7 +2080,7 @@ script
             calcolaCassaTeorica();
             calcolaConteggioFisico();
         }
-        if (stato.compagniaSelezionata === 'HDI'  stato.compagniaSelezionata === 'Vittoria') {
+        if (stato.compagniaSelezionata === 'HDI' || stato.compagniaSelezionata === 'Vittoria') {
             aggiornaRiepilogoProvvigioni();
         }
     }
@@ -2221,19 +2090,19 @@ script
         const mese = stato.dataSelezionata.getMonth();
         const anno = stato.dataSelezionata.getFullYear();
         let totaleProvvigioniMese = 0;
-        const decadi = { 1 0, 2 0, 3 0 };
+        const decadi = { 1: 0, 2: 0, 3: 0 };
 
         const snapshot = await db.collection('giornaliCassa')
             .where('compagnia', '==', stato.compagniaSelezionata)
             .where('anno', '==', anno).where('mese', '==', mese).get();
             
-        snapshot.forEach(doc = {
-            (doc.data().movimenti  []).forEach(m = {
-                const giorno = new Date(doc.data().dataKey.replace(-g, '')).getDate();
-                totaleProvvigioniMese += (m.provvigioni  0);
+        snapshot.forEach(doc => {
+            (doc.data().movimenti || []).forEach(m => {
+                const giorno = new Date(doc.data().dataKey.replace(/-/g, '/')).getDate();
+                totaleProvvigioniMese += (m.provvigioni || 0);
                 if (m.metodologia !== 'Rientro da Anticipo') {
-                    const decadeNum = giorno = 10  1  (giorno = 20  2  3);
-                    decadi[decadeNum] += (m.importo  0) - (m.provvigioni  0);
+                    const decadeNum = giorno <= 10 ? 1 : (giorno <= 20 ? 2 : 3);
+                    decadi[decadeNum] += (m.importo || 0) - (m.provvigioni || 0);
                 }
             });
         });
@@ -2245,17 +2114,17 @@ script
     }
     
     function calcolaCassaTeorica() {
-        const riporto = parseFloat(document.getElementById('riportoIniziale').value)  0;
+        const riporto = parseFloat(document.getElementById('riportoIniziale').value) || 0;
         if (!stato.datiGiornoCorrente) {
             document.getElementById('cassaTeorica').textContent = riporto.toFixed(2);
             return riporto;
         }
-        const movimenti = (stato.datiGiornoCorrente.movimenti  []);
-        const totaleMovimentiCassa = movimenti.reduce((acc, m) = {
-            const isCashBased = ['Contanti', 'Assegno'].includes(m.metodologia)  (m.metodologia === 'Rientro da Anticipo' && ['Contanti', 'Assegno'].includes(m.rientroMetodo));
+        const movimenti = (stato.datiGiornoCorrente.movimenti || []);
+        const totaleMovimentiCassa = movimenti.reduce((acc, m) => {
+            const isCashBased = ['Contanti', 'Assegno'].includes(m.metodologia) || (m.metodologia === 'Rientro da Anticipo' && ['Contanti', 'Assegno'].includes(m.rientroMetodo));
             let impatto = 0;
-            if (isCashBased) impatto = (m.importo  0) + (m.arrotondamenti  0) - (m.abbuoni  0);
-            return acc + impatto - (m.uscite  0);
+            if (isCashBased) impatto = (m.importo || 0) + (m.arrotondamenti || 0) - (m.abbuoni || 0);
+            return acc + impatto - (m.uscite || 0);
         }, 0);
         const cassaTeorica = riporto + totaleMovimentiCassa;
         if(stato.datiGiornoCorrente) stato.datiGiornoCorrente.cassaTeorica = cassaTeorica;
@@ -2265,27 +2134,27 @@ script
     
     function calcolaConteggioFisico() {
         let totale = 0;
-        document.querySelectorAll('#conteggioBanconote input, #conteggioMonete input').forEach(input = {
-            const subtotale = (parseFloat(input.dataset.valore)  (parseInt(input.value)  0));
+        document.querySelectorAll('#conteggioBanconote input, #conteggioMonete input').forEach(input => {
+            const subtotale = (parseFloat(input.dataset.valore) * (parseInt(input.value) || 0));
             totale += subtotale;
             document.getElementById(`subtotale-${input.dataset.valore.replace('.', '_')}`).textContent = `€ ${subtotale.toFixed(2)}`;
         });
-        document.querySelectorAll('.conteggio-assegno').forEach(input = {
-            totale += parseFloat(input.value)  0;
+        document.querySelectorAll('.conteggio-assegno').forEach(input => {
+            totale += parseFloat(input.value) || 0;
         });
         document.getElementById('totaleConteggioFisico').textContent = totale.toFixed(2);
         return totale;
     }
 
     function raccogliDatiConteggio() {
-        const conteggio = { banconote {}, monete {}, assegni [] };
-        document.querySelectorAll('#conteggioBanconote input, #conteggioMonete input').forEach(input = {
-            if (input.value && parseInt(input.value)  0) {
+        const conteggio = { banconote: {}, monete: {}, assegni: [] };
+        document.querySelectorAll('#conteggioBanconote input, #conteggioMonete input').forEach(input => {
+            if (input.value && parseInt(input.value) > 0) {
                 conteggio[input.dataset.tipo][input.dataset.valore] = parseInt(input.value);
             }
         });
-        document.querySelectorAll('.conteggio-assegno').forEach(input = {
-            if (input.value && parseFloat(input.value)  0) {
+        document.querySelectorAll('.conteggio-assegno').forEach(input => {
+            if (input.value && parseFloat(input.value) > 0) {
                 conteggio.assegni.push(parseFloat(input.value));
             }
         });
@@ -2295,23 +2164,23 @@ script
     function creaCampiConteggio(datiConteggio = {}) {
         const divBanconote = document.getElementById('conteggioBanconote');
         const divMonete = document.getElementById('conteggioMonete');
-        divBanconote.innerHTML = 'h3Banconoteh3';
-        divMonete.innerHTML = 'h3Moneteh3';
-        [...tagliBanconote, ...tagliMonete].forEach(taglio = {
-            const tipo = taglio = 5  'banconote'  'monete';
-            const div = tipo === 'banconote'  divBanconote  divMonete;
-            const valoreSalvato = datiConteggio.[tipo].[taglio]  '';
+        divBanconote.innerHTML = '<h3>Banconote</h3>';
+        divMonete.innerHTML = '<h3>Monete</h3>';
+        [...tagliBanconote, ...tagliMonete].forEach(taglio => {
+            const tipo = taglio >= 5 ? 'banconote' : 'monete';
+            const div = tipo === 'banconote' ? divBanconote : divMonete;
+            const valoreSalvato = datiConteggio?.[tipo]?.[taglio] || '';
             const idTaglio = taglio.toString().replace('.', '_');
             div.innerHTML += `
-                div style=display grid; grid-template-columns 1fr 2fr 2fr; align-items center; gap 5px; margin-bottom 5px;
-                    label€ ${taglio.toFixed(2)}label
-                    input type=number oninput=aggiornaDatiGiornoCorrente({ conteggioFisico raccogliDatiConteggio() }) data-valore=${taglio} data-tipo=${tipo} value=${valoreSalvato}
-                    span id=subtotale-${idTaglio}€ 0.00span
-                div`;
+                <div style="display: grid; grid-template-columns: 1fr 2fr 2fr; align-items: center; gap: 5px; margin-bottom: 5px;">
+                    <label>€ ${taglio.toFixed(2)}</label>
+                    <input type="number" oninput="aggiornaDatiGiornoCorrente({ conteggioFisico: raccogliDatiConteggio() })" data-valore="${taglio}" data-tipo="${tipo}" value="${valoreSalvato}">
+                    <span id="subtotale-${idTaglio}">€ 0.00</span>
+                </div>`;
         });
         const divAssegni = document.getElementById('lista-conteggio-assegni');
         divAssegni.innerHTML = '';
-        (datiConteggio.assegni  []).forEach(importo = aggiungiCampoAssegnoConteggio(importo));
+        (datiConteggio?.assegni || []).forEach(importo => aggiungiCampoAssegnoConteggio(importo));
         calcolaConteggioFisico();
     }
 
@@ -2320,18 +2189,18 @@ script
         const div = document.createElement('div');
         div.style.display = 'flex'; div.style.gap = '5px'; div.style.marginBottom = '5px';
         div.innerHTML = `
-            input type=number step=0.01 class=conteggio-assegno placeholder=Importo value=${importo} oninput=aggiornaDatiGiornoCorrente({ conteggioFisico raccogliDatiConteggio() })
-            button type=button class=button-delete style=widthauto; onclick=this.parentElement.remove(); aggiornaDatiGiornoCorrente({ conteggioFisico raccogliDatiConteggio() });Xbutton`;
+            <input type="number" step="0.01" class="conteggio-assegno" placeholder="Importo" value="${importo}" oninput="aggiornaDatiGiornoCorrente({ conteggioFisico: raccogliDatiConteggio() })">
+            <button type="button" class="button-delete" style="width:auto;" onclick="this.parentElement.remove(); aggiornaDatiGiornoCorrente({ conteggioFisico: raccogliDatiConteggio() });">X</button>`;
         divAssegni.appendChild(div);
     }
 
     function azzeraConteggio() {
-        if (confirm('Sei sicuro di voler azzerare tutto il conteggio fisico')) {
-            document.querySelectorAll('#box-conteggio-cassa input[type=number]').forEach(input = {
+        if (confirm('Sei sicuro di voler azzerare tutto il conteggio fisico?')) {
+            document.querySelectorAll('#box-conteggio-cassa input[type="number"]').forEach(input => {
                 input.value = '';
             });
             document.getElementById('lista-conteggio-assegni').innerHTML = '';
-            aggiornaDatiGiornoCorrente({ conteggioFisico {} });
+            aggiornaDatiGiornoCorrente({ conteggioFisico: {} });
         }
     }
     
@@ -2340,18 +2209,18 @@ script
         const fisica = calcolaConteggioFisico();
         const differenza = fisica - teorica;
         let result = {};
-        if (Math.abs(differenza)  0.01) {
-            result = { text `✅ I CONTI TORNANO! Differenza € 0.00`, class 'ok' };
+        if (Math.abs(differenza) < 0.01) {
+            result = { text: `✅ I CONTI TORNANO! Differenza: € 0.00`, class: 'ok' };
         } else {
-            result = { text `❌ ATTENZIONE! Differenza di cassa € ${differenza.toFixed(2)}`, class 'errore' };
+            result = { text: `❌ ATTENZIONE! Differenza di cassa: € ${differenza.toFixed(2)}`, class: 'errore' };
         }
-        await aggiornaDatiGiornoCorrente({ cassaTeorica teorica, verificaResult result });
+        await aggiornaDatiGiornoCorrente({ cassaTeorica: teorica, verificaResult: result });
     }
     
     async function toggleRiportoMode(isManual) {
         document.getElementById('riportoIniziale').readOnly = !isManual;
-        document.getElementById('riporto-mode-label').textContent = isManual  'Riporto Manuale'  'Riporto Automatico';
-        const update = { riportoIsManual isManual };
+        document.getElementById('riporto-mode-label').textContent = isManual ? 'Riporto Manuale' : 'Riporto Automatico';
+        const update = { riportoIsManual: isManual };
         if (!isManual) {
             update.riportoIniziale = await calcolaRiporto(stato.dataSelezionata);
         }
@@ -2362,21 +2231,21 @@ script
         document.getElementById('form-movimento-fieldset').disabled = !!isFestivo;
         document.getElementById('box-conteggio-cassa-fieldset').disabled = !!isFestivo;
         const btn = document.getElementById('btn-festa');
-        btn.textContent = isFestivo  'Riattiva Giorno'  'FestaChiusura';
-        btn.onclick = isFestivo  annullaChiusuraFestiva  gestisciChiusuraFestiva;
-        btn.style.backgroundColor = isFestivo  '#28a745'  '#6c757d';
+        btn.textContent = isFestivo ? 'Riattiva Giorno' : 'Festa/Chiusura';
+        btn.onclick = isFestivo ? annullaChiusuraFestiva : gestisciChiusuraFestiva;
+        btn.style.backgroundColor = isFestivo ? '#28a745' : '#6c757d';
     }
 
     async function gestisciChiusuraFestiva() {
-        if (confirm(Sei sicuro di voler impostare questo giorno come festivo)) {
+        if (confirm("Sei sicuro di voler impostare questo giorno come festivo?")) {
             const riporto = stato.datiGiornoCorrente.riportoIniziale;
-            await aggiornaDatiGiornoCorrente({ isGiornoFestivo true, cassaTeorica riporto });
+            await aggiornaDatiGiornoCorrente({ isGiornoFestivo: true, cassaTeorica: riporto });
         }
     }
     
     async function annullaChiusuraFestiva() {
-        if (confirm(Vuoi riattivare questo giorno per l'inserimento)) {
-            await aggiornaDatiGiornoCorrente({ isGiornoFestivo false });
+        if (confirm("Vuoi riattivare questo giorno per l'inserimento?")) {
+            await aggiornaDatiGiornoCorrente({ isGiornoFestivo: false });
         }
     }
     
@@ -2391,27 +2260,27 @@ script
         const annoSelect = document.getElementById('generic-filtro-anno');
         const meseSelect = document.getElementById('generic-filtro-mese');
         const dateKey = configTabellaCorrente.filterByDateOn;
-        const years = new Set(datiTabellaCorrente.map(d = d[dateKey]  new Date(d[dateKey].replace(-g, '')).getFullYear()  null).filter(y = y));
-        annoSelect.innerHTML = 'option value=tuttiTuttioption';
-        Array.from(years).sort((a,b)=b-a).forEach(y = annoSelect.innerHTML += `option value=${y}${y}option`);
-        meseSelect.innerHTML = 'option value=tuttiTuttioption';
-        [Gen, Feb, Mar, Apr, Mag, Giu, Lug, Ago, Set, Ott, Nov, Dic].forEach((m, i) = meseSelect.innerHTML += `option value=${i}${m}option`);
+        const years = new Set(datiTabellaCorrente.map(d => d[dateKey] ? new Date(d[dateKey].replace(/-/g, '/')).getFullYear() : null).filter(y => y));
+        annoSelect.innerHTML = '<option value="tutti">Tutti</option>';
+        Array.from(years).sort((a,b)=>b-a).forEach(y => annoSelect.innerHTML += `<option value="${y}">${y}</option>`);
+        meseSelect.innerHTML = '<option value="tutti">Tutti</option>';
+        ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"].forEach((m, i) => meseSelect.innerHTML += `<option value="${i}">${m}</option>`);
         resetFiltriTabella();
     }
     
     function aggiornaStileRiga(riga, movimento) {
         if(configTabellaCorrente.disableRowColoring) return;
         riga.className = '';
-        const dateKey = configTabellaCorrente.dataSource === 'anticipi'  'dataKey'  configTabellaCorrente.filterByDateOn;
-        if (!movimento  !movimento[dateKey]) return;
+        const dateKey = configTabellaCorrente.dataSource === 'anticipi' ? 'dataKey' : configTabellaCorrente.filterByDateOn;
+        if (!movimento || !movimento[dateKey]) return;
 
-        if (movimento.incassato  movimento.abbuonoRegolato  movimento.riattivata  movimento.fatto) {
+        if (movimento.incassato || movimento.abbuonoRegolato || movimento.riattivata || movimento.fatto) {
             riga.classList.add('riga-incassato');
         } else {
-            const dataMovimento = new Date(movimento[dateKey].replace(-g, ''));
-            const diffGiorni = Math.floor((new Date() - dataMovimento)  (1000  60  60  24));
-            if (diffGiorni  30) riga.classList.add('riga-critico');
-            else if (diffGiorni  15) riga.classList.add('riga-vecchio');
+            const dataMovimento = new Date(movimento[dateKey].replace(/-/g, '/'));
+            const diffGiorni = Math.floor((new Date() - dataMovimento) / (1000 * 60 * 60 * 24));
+            if (diffGiorni > 30) riga.classList.add('riga-critico');
+            else if (diffGiorni > 15) riga.classList.add('riga-vecchio');
         }
     }
     
@@ -2421,12 +2290,12 @@ script
         notification.className = `save-notification ${type}`;
         notification.style.display = 'block';
         notification.style.opacity = '1';
-        setTimeout(() = {
+        setTimeout(() => {
             notification.style.opacity = '0';
-            setTimeout(() = { notification.style.display = 'none'; }, 500);
+            setTimeout(() => { notification.style.display = 'none'; }, 500);
         }, 2000);
     }
 
-script
-body
-html
+</script>
+</body>
+</html>
