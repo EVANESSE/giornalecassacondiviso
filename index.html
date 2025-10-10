@@ -369,14 +369,6 @@
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             }
 
-            .conteggio-grid {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 40px;
-                margin-bottom: 20px;
-            }
-            .conteggio-colonna h3 { margin-top: 0; }
-            
             .box, .container {
                 box-shadow: none !important;
                 border: 1px solid #ccc !important;
@@ -388,7 +380,7 @@
                 color: #000 !important;
                 text-shadow: none !important;
             }
-            .riepilogo-totali, .risultato-verifica {
+            .riepilogo-totali {
                 border-left-width: 3px;
                 font-size: 1.1rem;
             }
@@ -399,6 +391,45 @@
             th, td {
                 padding: 6px;
             }
+
+            /* ========= MODIFICA: REGOLE PER COMPATTARE LA SECONDA PAGINA DI STAMPA ========= */
+            .print-page .conteggio-grid {
+                gap: 20px; /* Riduci lo spazio tra le colonne del conteggio */
+                margin-bottom: 10px;
+            }
+
+            .print-page .conteggio-colonna h3 {
+                font-size: 1.1rem; /* Riduci dimensione titoli h3 */
+                margin-bottom: 8px;
+                border-bottom: 1px solid #ccc;
+                padding-bottom: 4px;
+            }
+
+            /* Stili per compattare le righe del conteggio banconote/monete */
+            .print-page #conteggioBanconote div,
+            .print-page #conteggioMonete div {
+                grid-template-columns: 1fr 1.5fr 1.5fr;
+                gap: 4px; /* Riduci spazio tra elementi della riga */
+                margin-bottom: 3px; /* Riduci spazio tra le righe */
+                font-size: 0.75rem; /* Riduci la dimensione del font */
+                align-items: center;
+            }
+            .print-page #conteggioBanconote div input,
+            .print-page #conteggioMonete div input,
+            .print-page #box-conteggio-assegni input {
+                padding: 2px 4px; /* Riduci il padding degli input */
+                font-size: 0.75rem;
+                margin-bottom: 2px;
+            }
+            .print-page #box-conteggio-assegni .button-delete {
+                display: none; /* Nasconde i pulsanti di cancellazione assegno in stampa */
+            }
+            .print-page .risultato-verifica {
+                margin-top: 15px;
+                padding: 10px;
+                font-size: 1rem;
+            }
+             /* ========================= FINE MODIFICA ========================= */
         }
     </style>
 </head>
@@ -1658,7 +1689,6 @@
         return dataPrec;
     }
     
-    // MODIFICA 2: Funzione di stampa corretta per includere tutte le sezioni
     function stampaPersonalizzata() {
         const printLayout = document.getElementById('print-layout');
         const mainTitle = document.getElementById('main-title').textContent;
@@ -1666,7 +1696,6 @@
         const isSimplified = ['ARAG', 'Helvetia'].includes(stato.compagniaSelezionata);
         let printHTML = '';
 
-        // --- PAGINA 1: Riepilogo Movimenti ---
         const riepilogoMovimentiBox = document.getElementById('box-riepilogo-movimenti').cloneNode(true);
         riepilogoMovimentiBox.querySelectorAll('th:last-child, td:last-child').forEach(el => el.remove());
         if (isSimplified) {
@@ -1682,12 +1711,10 @@
                 ${riepilogoMovimentiBox.outerHTML}
             </div>`;
 
-        // --- PAGINA 2: Conteggio e Verifica (solo per compagnie standard) ---
         if (!isSimplified) {
             const conteggioAssegniBoxClone = document.getElementById('box-conteggio-assegni').cloneNode(true);
             const verificaFinaleBoxClone = document.getElementById('box-verifica-finale').cloneNode(true);
 
-            // Rimuove i pulsanti dagli elementi clonati per non mostrarli in stampa
             conteggioAssegniBoxClone.querySelector('button')?.remove();
             verificaFinaleBoxClone.querySelector('button')?.remove();
 
@@ -1972,16 +1999,12 @@
         divAssegni.appendChild(div);
     }
 
-    // MODIFICA 1: Nuova funzione per azzerare il conteggio
     function azzeraConteggio() {
         if (confirm('Sei sicuro di voler azzerare tutto il conteggio fisico?')) {
-            // Svuota i campi input di banconote, monete e assegni
             document.querySelectorAll('#box-conteggio-cassa input[type="number"]').forEach(input => {
                 input.value = '';
             });
-            // Rimuove dinamicamente i campi assegni, dato che sono creati al volo
             document.getElementById('lista-conteggio-assegni').innerHTML = '';
-            // Aggiorna il database con un oggetto conteggio vuoto
             aggiornaDatiGiornoCorrente({ conteggioFisico: {} });
         }
     }
