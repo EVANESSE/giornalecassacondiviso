@@ -533,9 +533,13 @@
                         <i class="fas fa-bell fa-2x"></i>
                         <span>PROMEMORIA</span>
                     </button>
-                    <button class="utility-button" onclick="convertiVecchioBackup()" style="grid-column: 1 / -1; width: 100%; color: #dc3545;">
+                    <button class="utility-button" onclick="sincronizzaDatiSecondari()" style="color: #17a2b8;">
+                        <i class="fas fa-sync-alt fa-2x"></i>
+                        <span>Sincronizza Dati</span>
+                    </button>
+                    <button class="utility-button" onclick="convertiVecchioBackup()" style="color: #dc3545;">
                         <i class="fas fa-magic fa-2x"></i>
-                        <span>CONVERTI VECCHIO BACKUP</span>
+                        <span>Converti Vecchio Backup</span>
                     </button>
                 </div>
             </div>
@@ -1019,7 +1023,6 @@
             const dataKey = formatDate(data);
             const docId = `${stato.compagniaSelezionata}_${dataKey}`;
             
-            // CORREZIONE BUG RIPORTO AUTOMATICO
             unsubscribeGiornale = db.collection('giornaliCassa').doc(docId).onSnapshot(async doc => {
                 statusIndicator.textContent = 'Sincronizzato';
                 statusIndicator.className = 'synced';
@@ -1402,8 +1405,7 @@
         };
         input.click();
     }
-
-    // NUOVA FUNZIONE PER CONVERTIRE IL VECCHIO FORMATO DI BACKUP
+    
     function convertiVecchioBackup() {
         const fileInput = document.getElementById('vecchio-backup-input');
         fileInput.onchange = e => {
@@ -1440,14 +1442,13 @@
                                     compagnia: compagnia,
                                     dataKey: dataKey,
                                     anno: dateObj.getFullYear(),
-                                    mese: dateObj.getMonth() // JS getMonth() è già 0-indicizzato
+                                    mese: dateObj.getMonth()
                                 };
                                 nuovoBackup.giornaliCassa.push(nuovoDoc);
                             }
                         }
                     });
 
-                    // Trigger download del file convertito
                     const datiJson = JSON.stringify(nuovoBackup, null, 2);
                     const blob = new Blob([datiJson], { type: 'application/json' });
                     const url = URL.createObjectURL(blob);
@@ -1471,6 +1472,44 @@
         alert("Seleziona il tuo vecchio file di backup per la conversione.");
         fileInput.click();
     }
+    
+    // NUOVA FUNZIONE PER SINCRONIZZARE I DATI DOPO L'IMPORTAZIONE
+    async function sincronizzaDatiSecondari() {
+        if (!confirm("ATTENZIONE: Questa operazione leggerà tutti i movimenti di cassa e rigenererà i dati delle 'Altre Funzioni' (Anticipi, Abbuoni, Bonifici, etc.).\n\nL'operazione è sicura ma potrebbe richiedere alcuni minuti.\n\nContinuare?")) {
+            return;
+        }
+
+        try {
+            alert("Sincronizzazione avviata. Non chiudere la pagina fino al messaggio di completamento.");
+            
+            // Opzionale: pulizia delle vecchie voci automatiche. Per sicurezza, la saltiamo e sovrascriviamo.
+            // La logica di gestisciMovimentiSecondari con set e delete è sufficiente.
+
+            const giornaliSnapshot = await db.collection('giornaliCassa').get();
+            let totalMovimenti = 0;
+            
+            for (const doc of giornaliSnapshot.docs) {
+                const datiGiorno = doc.data();
+                if (datiGiorno.movimenti && Array.isArray(datiGiorno.movimenti)) {
+                    for (const movimento of datiGiorno.movimenti) {
+                        // Assicura che ogni movimento abbia un ID univoco, creandolo se manca
+                        if (!movimento.movimentoId) {
+                           movimento.movimentoId = `${new Date(datiGiorno.dataKey).getTime()}-${Math.random().toString(36).substring(2, 9)}`;
+                        }
+                        await gestisciMovimentiSecondari(movimento, datiGiorno.dataKey, datiGiorno.compagnia);
+                        totalMovimenti++;
+                    }
+                }
+            }
+            
+            alert(`Sincronizzazione completata con successo!\nSono stati processati ${totalMovimenti} movimenti.`);
+
+        } catch (error) {
+            console.error("Errore durante la sincronizzazione dei dati secondari:", error);
+            alert(`Si è verificato un errore durante la sincronizzazione: ${error.message}`);
+        }
+    }
+
 
     // =========================================================
     // LOGICA DI SINCRONIZZAZIONE MOVIMENTI
@@ -1486,22 +1525,25 @@
             numeroPolizza: movimento.numeroPolizza,
             isAutomatic: true,
             sourceJournalDate: dataKey,
-            lastModifiedBy: stato.datiUtente.displayName,
+            lastModifiedBy: stato.datiUtente?.displayName || 'Sistema',
             lastModifiedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
 
+        // 1. Gestione Anticipi
         if (movimento.metodologia === 'Anticipo') {
             await db.collection('anticipi').doc(docId).set({ ...baseData, importo: movimento.importo, tipoAnticipo: movimento.tipoAnticipo, anticipoDi: '', note: '' }, { merge: true });
         } else {
             await db.collection('anticipi').doc(docId).delete().catch(() => {});
         }
 
+        // 2. Gestione Abbuoni
         if ((movimento.abbuoni || 0) > 0) {
             await db.collection('abbuoni').doc(docId).set({ ...baseData, abbuoni: movimento.abbuoni, personaAbbuono: movimento.personaAbbuono, note: '' }, { merge: true });
         } else {
             await db.collection('abbuoni').doc(docId).delete().catch(() => {});
         }
 
+        // 3. Gestione Bonifici e POS
         let targetCollection = null;
         if (movimento.metodologia === 'Bonifico') {
             if (compagnia === 'HDI' || compagnia === 'ARAG') targetCollection = 'bonifici_hdi_arag';
