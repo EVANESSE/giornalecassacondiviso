@@ -102,8 +102,29 @@
             background: radial-gradient(circle, #6c757d 0%, #212529 100%);
             backdrop-filter: blur(3px);
         }
+        .home-header {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            z-index: 1001;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .backup-container {
+            display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end;
+        }
+        .header-backup-button {
+            width: auto; padding: 8px 15px; font-size: 0.9rem;
+            background-color: #6c757d; border-radius: 5px; margin-bottom: 0;
+        }
+        .logout-button {
+            background-color: #dc3545 !important;
+        }
+
         #company-selector-modal .modal-wrapper {
-            display: flex; gap: 40px; align-items: flex-start;
+            display: flex; gap: 40px; align-items: flex-start; padding-top: 60px; /* Space for header */
         }
         #company-selector-modal .modal-content {
             background: linear-gradient(to bottom, #f8f9fa, #ffffff); border-radius: 12px;
@@ -158,28 +179,10 @@
         .utility-button:hover i { color: #007bff; }
         .utility-button:active i { color: #28a745; }
         
-        .backup-container {
-            position: absolute; top: 30px; right: 40px;
-            z-index: 1001; display: flex; flex-wrap: wrap; gap: 10px;
-        }
-        .header-backup-button {
-            width: auto; padding: 8px 15px; font-size: 0.9rem;
-            background-color: #6c757d; border-radius: 5px; margin-bottom: 0;
-        }
-        .logout-container {
-            position: absolute;
-            top: 30px;
-            left: 40px;
-            z-index: 1001;
-        }
-        .logout-button {
-            background-color: #dc3545 !important;
-        }
-
         #alerts-sidebar {
             position: fixed;
             left: 20px;
-            top: 80px; /* Adjusted to not overlap with new logout button */
+            top: 80px; /* Adjusted to not overlap with header */
             z-index: 1001;
             display: flex;
             flex-direction: column;
@@ -402,9 +405,32 @@
             table {
                 font-size: 0.8rem;
                 width: 100%;
+                table-layout: auto !important; /* Allow table to adjust in print */
             }
             th, td {
                 padding: 6px;
+            }
+            
+            /* RIPRISTINO STILI TABELLA PER LA STAMPA */
+            #tabellaMovimenti thead, .generic-table thead {
+                display: table-header-group !important;
+            }
+            #tabellaMovimenti tr, .generic-table tr {
+                display: table-row !important;
+                margin-bottom: 0;
+                border: none;
+                box-shadow: none;
+                padding: 0;
+            }
+            #tabellaMovimenti td, .generic-table td {
+                display: table-cell !important;
+                text-align: left;
+                border: 1px solid #ccc !important;
+                padding: 6px !important;
+                position: static;
+            }
+            #tabellaMovimenti td::before, .generic-table td::before {
+                display: none !important;
             }
 
             .print-page .conteggio-grid {
@@ -465,10 +491,28 @@
             h1, h2 {
                 font-size: 1.4rem;
             }
-            .modal-wrapper {
+            .home-header {
+                flex-direction: column;
+                align-items: center;
+                gap: 15px;
+                position: static;
+                padding: 10px;
+            }
+            .home-header .logout-container, .home-header .backup-container {
+                position: static;
+                width: 100%;
+                display: flex;
+                justify-content: center;
+            }
+            #company-selector-modal .modal-wrapper {
                 flex-direction: column;
                 overflow-y: auto;
-                height: 90vh;
+                height: calc(90vh - 80px); /* Adjust height for header */
+                padding-top: 10px;
+                align-items: center; /* Center content */
+            }
+            #alerts-sidebar {
+                display: none; /* Hide sidebar on mobile for simplicity */
             }
             
             /* Stili per rendere le tabelle "a card" su mobile */
@@ -562,8 +606,16 @@
     <div class="modal-overlay" id="company-selector-modal" style="display: none;">
         <div class="modal-overlay-background"></div>
         
-        <div class="logout-container">
-            <button class="header-backup-button logout-button" onclick="logoutUser()">Logout</button>
+        <div class="home-header">
+            <div class="logout-container">
+                <button class="header-backup-button logout-button" onclick="logoutUser()">Logout</button>
+            </div>
+            <div class="backup-container">
+                <button class="header-backup-button" onclick="esportaBackup()" style="background-color: #007bff;"><i class="fa fa-download"></i> Esporta</button>
+                <button class="header-backup-button" onclick="importaBackup()" style="background-color: #28a745;"><i class="fa fa-upload"></i> Importa</button>
+                <button class="header-backup-button" onclick="sincronizzaDatiSecondari()" style="background-color: #17a2b8;"><i class="fas fa-sync-alt"></i> Sincronizza</button>
+                <button class="header-backup-button" onclick="convertiVecchioBackup()" style="background-color: #ffc107; color: #212529;"><i class="fas fa-magic"></i> Converti</button>
+            </div>
         </div>
 
         <div id="alerts-sidebar">
@@ -575,13 +627,6 @@
                 <h3><i class="fas fa-bell"></i> Promemoria di Oggi</h3>
                 <ul id="promemoria-alert-list"></ul>
            </div>
-        </div>
-
-        <div class="backup-container">
-            <button class="header-backup-button" onclick="esportaBackup()" style="background-color: #007bff;"><i class="fa fa-download"></i> Esporta</button>
-            <button class="header-backup-button" onclick="importaBackup()" style="background-color: #28a745;"><i class="fa fa-upload"></i> Importa</button>
-            <button class="header-backup-button" onclick="sincronizzaDatiSecondari()" style="background-color: #17a2b8;"><i class="fas fa-sync-alt"></i> Sincronizza</button>
-            <button class="header-backup-button" onclick="convertiVecchioBackup()" style="background-color: #ffc107; color: #212529;"><i class="fas fa-magic"></i> Converti</button>
         </div>
 
         <div class="modal-wrapper">
@@ -860,7 +905,8 @@
     <div id="print-layout"></div>
 
 <script>
-    // ========= NUOVA CONFIGURAZIONE FIREBASE =========
+// ... (Il codice Javascript rimane invariato, le modifiche sono solo nell'HTML e CSS sopra) ...
+// ========= NUOVA CONFIGURAZIONE FIREBASE =========
     const firebaseConfig = {
       apiKey: "AIzaSyBr8TBws4pTq6nlCmbQbq8bezgNIgd63E8",
       authDomain: "giornalecassacondiviso.firebaseapp.com",
@@ -1724,7 +1770,6 @@
         tbody.innerHTML = '';
 
         const headerRow = thead.insertRow();
-        const headerData = {'Origine': 'col-origine', ...configTabellaCorrente.columns};
         const dateColumns = ['dataEstinzione', 'dataSospensione', 'dataRiattivazione', 'data', 'dataKey'];
         const booleanFields = ['incassato', 'riattivata', 'abbuonoRegolato', 'fatto'];
         const numericFields = ['importo', 'abbuoni'];
@@ -1771,7 +1816,7 @@
                 cell.dataset.property = key;
                 cell.dataset.label = labels[key]; // Add label for mobile view
                 let content = d[key] || '';
-                const isEditable = !d.isAutomatic || editableForAuto.includes(key);
+                const isEditable = !d.isAutomatic || editableFieldsForAutomatic.includes(key);
 
                 if (dateColumns.includes(key)) cell.classList.add('col-date');
 
