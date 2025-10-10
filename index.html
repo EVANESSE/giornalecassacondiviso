@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestione Cassa Collaborativa</title>
+
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="unnamed.jpg">
+    <meta name="theme-color" content="#6c757d">
+
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
@@ -155,11 +160,11 @@
         
         .backup-container {
             position: absolute; top: 30px; right: 40px;
-            z-index: 1001; display: flex; gap: 10px;
+            z-index: 1001; display: flex; flex-wrap: wrap; gap: 10px;
         }
         .header-backup-button {
             width: auto; padding: 8px 15px; font-size: 0.9rem;
-            background-color: #17a2b8; border-radius: 5px; margin-bottom: 0;
+            background-color: #6c757d; border-radius: 5px; margin-bottom: 0;
         }
         .logout-container {
             position: absolute;
@@ -440,6 +445,79 @@
                 font-size: 1rem;
             }
         }
+        
+        /* Stili per la visualizzazione mobile (Responsive) */
+        @media (max-width: 768px) {
+            body {
+                padding: 5px;
+            }
+            .container {
+                padding: 10px;
+            }
+            .grid-container {
+                grid-template-columns: 1fr; /* Una sola colonna */
+                gap: 15px; 
+            }
+            .app-header {
+                flex-direction: column; 
+                align-items: flex-start;
+            }
+            h1, h2 {
+                font-size: 1.4rem;
+            }
+            .modal-wrapper {
+                flex-direction: column;
+                overflow-y: auto;
+                height: 90vh;
+            }
+            
+            /* Stili per rendere le tabelle "a card" su mobile */
+            #tabellaMovimenti thead, .generic-table thead {
+                display: none;
+            }
+
+            #tabellaMovimenti tr, .generic-table tr {
+                display: block;
+                margin-bottom: 15px;
+                border: 1px solid #ddd;
+                border-radius: 5px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+                padding: 5px;
+            }
+            #tabellaMovimenti tr:nth-child(even), .generic-table tr:nth-child(even) {
+                background-color: transparent; /* Resetta lo sfondo alternato */
+            }
+
+            #tabellaMovimenti td, .generic-table td {
+                display: block;
+                text-align: right;
+                border: none;
+                border-bottom: 1px dotted #ccc;
+                padding-left: 50%; /* Spazio per l'etichetta */
+                position: relative;
+            }
+            #tabellaMovimenti td:last-child, .generic-table td:last-child {
+                border-bottom: none;
+            }
+
+            #tabellaMovimenti td::before, .generic-table td::before {
+                content: attr(data-label);
+                position: absolute;
+                left: 6px;
+                width: 45%;
+                padding-right: 10px;
+                white-space: nowrap;
+                text-align: left;
+                font-weight: bold;
+            }
+            .generic-table td.col-origine {
+                padding-left: 0;
+                text-align: center;
+            }
+            .generic-table td.col-origine::before {
+                display: none; /* L'icona è già chiara */
+            }
+        }
     </style>
 </head>
 <body id="app-body">
@@ -500,10 +578,10 @@
         </div>
 
         <div class="backup-container">
-            <button class="header-backup-button" onclick="esportaBackup()"><i class="fa fa-download"></i> Esporta</button>
-            <button class="header-backup-button" onclick="importaBackup()"><i class="fa fa-upload"></i> Importa</button>
-            <button class="header-backup-button" onclick="sincronizzaDatiSecondari()" style="background-color: #17a2b8;"><i class="fas fa-sync-alt"></i> Sincronizza Dati</button>
-            <button class="header-backup-button" onclick="convertiVecchioBackup()" style="background-color: #dc3545;"><i class="fas fa-magic"></i> Converti Backup</button>
+            <button class="header-backup-button" onclick="esportaBackup()" style="background-color: #007bff;"><i class="fa fa-download"></i> Esporta</button>
+            <button class="header-backup-button" onclick="importaBackup()" style="background-color: #28a745;"><i class="fa fa-upload"></i> Importa</button>
+            <button class="header-backup-button" onclick="sincronizzaDatiSecondari()" style="background-color: #17a2b8;"><i class="fas fa-sync-alt"></i> Sincronizza</button>
+            <button class="header-backup-button" onclick="convertiVecchioBackup()" style="background-color: #ffc107; color: #212529;"><i class="fas fa-magic"></i> Converti</button>
         </div>
 
         <div class="modal-wrapper">
@@ -742,19 +820,21 @@
     
         <div class="box" id="box-riepilogo-movimenti">
             <h2>Riepilogo Movimenti di Cassa</h2>
-            <table id="tabellaMovimenti">
-                <thead><tr>
-                    <th class="col-data-mensile">Data</th>
-                    <th>Cliente</th><th>Polizza</th><th>Metodo</th><th>Importo (€)</th>
-                    <th class="col-provvigioni">Provv.(€)</th>
-                    <th>Arroton. (€)</th>
-                    <th>Abbuoni (€)</th>
-                    <th>Uscite (€)</th>
-                    <th class="col-impatto-cassa">Impatto (€)</th>
-                    <th>Azioni</th>
-                 </tr></thead>
-                <tbody></tbody>
-            </table>
+            <div style="overflow-x: auto;">
+                <table id="tabellaMovimenti">
+                    <thead><tr>
+                        <th class="col-data-mensile">Data</th>
+                        <th>Cliente</th><th>Polizza</th><th>Metodo</th><th>Importo (€)</th>
+                        <th class="col-provvigioni">Provv.(€)</th>
+                        <th>Arroton. (€)</th>
+                        <th>Abbuoni (€)</th>
+                        <th>Uscite (€)</th>
+                        <th class="col-impatto-cassa">Impatto (€)</th>
+                        <th>Azioni</th>
+                    </tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
             <div class="riepilogo-totali col-cassa-teorica">Cassa Teorica Finale (Riporto + Movimenti): € <span id="cassaTeorica">0.00</span></div>
         </div>
         
@@ -780,8 +860,7 @@
     <div id="print-layout"></div>
 
 <script>
-// ... (Il codice Javascript rimane invariato, le modifiche sono solo nell'HTML e CSS sopra) ...
-// ========= NUOVA CONFIGURAZIONE FIREBASE =========
+    // ========= NUOVA CONFIGURAZIONE FIREBASE =========
     const firebaseConfig = {
       apiKey: "AIzaSyBr8TBws4pTq6nlCmbQbq8bezgNIgd63E8",
       authDomain: "giornalecassacondiviso.firebaseapp.com",
@@ -1645,12 +1724,18 @@
         tbody.innerHTML = '';
 
         const headerRow = thead.insertRow();
+        const headerData = {'Origine': 'col-origine', ...configTabellaCorrente.columns};
         const dateColumns = ['dataEstinzione', 'dataSospensione', 'dataRiattivazione', 'data', 'dataKey'];
         const booleanFields = ['incassato', 'riattivata', 'abbuonoRegolato', 'fatto'];
         const numericFields = ['importo', 'abbuoni'];
         const editableForAuto = configTabellaCorrente.editableFieldsForAutomatic || [];
 
-        // Add new "Origine" header
+        // Add headers dynamically and store labels for mobile view
+        const labels = {};
+        for(const key in configTabellaCorrente.columns){
+            labels[key] = configTabellaCorrente.columns[key];
+        }
+
         const thOrigine = document.createElement('th');
         thOrigine.textContent = 'Origine';
         thOrigine.classList.add('col-origine');
@@ -1672,7 +1757,6 @@
             const riga = tbody.insertRow();
             riga.dataset.id = d.id;
 
-            // Add new "Origine" cell with icon
             const cellOrigine = riga.insertCell();
             cellOrigine.classList.add('col-origine');
             cellOrigine.style.verticalAlign = 'middle';
@@ -1685,6 +1769,7 @@
             for (const key in configTabellaCorrente.columns) {
                 const cell = riga.insertCell();
                 cell.dataset.property = key;
+                cell.dataset.label = labels[key]; // Add label for mobile view
                 let content = d[key] || '';
                 const isEditable = !d.isAutomatic || editableForAuto.includes(key);
 
@@ -1694,7 +1779,6 @@
                     cell.innerHTML = `<input type="date" value="${content}" onchange="salvaModificaGenerica(this)" ${!isEditable ? 'readonly style="background-color:#eee;"' : ''}>`;
                 } else if (booleanFields.includes(key)) {
                     cell.innerHTML = `<input type="checkbox" ${content ? 'checked' : ''} onchange="salvaModificaGenerica(this)" ${!isEditable ? 'disabled' : ''}>`;
-                    cell.style.textAlign = 'center';
                 } else {
                     if (numericFields.includes(key)) {
                         cell.textContent = (parseFloat(content) || 0).toFixed(2);
@@ -1708,9 +1792,8 @@
                 }
             }
             
-            // Add action cell with delete button for all rows
             const cellaAzioni = riga.insertCell();
-            cellaAzioni.style.textAlign = 'center';
+            cellaAzioni.dataset.label = "Azioni";
             cellaAzioni.innerHTML = `<button class="button-delete" onclick="cancellaMovimentoGenerico(this)">Elimina</button>`;
             
             aggiornaStileRiga(riga, d);
@@ -1774,7 +1857,6 @@
                     const journalDocId = `${sourceCompagnia}_${sourceDate}`;
                     const journalDocRef = db.collection('giornaliCassa').doc(journalDocId);
                     
-                    // The main logic is to remove the item from the source journal.
                     await db.runTransaction(async (transaction) => {
                         const journalDoc = await transaction.get(journalDocRef);
                         if (journalDoc.exists) {
@@ -1784,13 +1866,11 @@
                         }
                     });
                     
-                    // Also explicitly delete from the secondary collection to ensure immediate UI update and cleanup.
                     await db.collection(configTabellaCorrente.dataSource).doc(docId).delete();
                     await rimuoviMovimentiSecondari({ movimentoId: docId });
 
 
                 } else {
-                    // It's a manual entry, just delete it from its own table.
                     await db.collection(configTabellaCorrente.dataSource).doc(docId).delete();
                 }
                 mostraNotificaTemporanea('generic-modal-notification', 'Elemento eliminato con successo.', 'success');
@@ -2037,7 +2117,8 @@
     function aggiornaTabellaMovimenti(movimenti = []) {
         const tbody = document.getElementById('tabellaMovimenti').querySelector('tbody');
         tbody.innerHTML = '';
-        const showProvvigioni = stato.compagniaSelezionata === 'HDI' || stato.compagniaSelezionata === 'Vittoria';
+        const headers = Array.from(document.querySelectorAll('#tabellaMovimenti th')).map(th => th.textContent);
+        
         (movimenti || []).forEach((m, index) => {
             const dataKeyOriginale = m.dataMovimento || formatDate(stato.dataSelezionata);
             let impattoCassa = 0;
@@ -2053,17 +2134,22 @@
             
             const riga = tbody.insertRow();
             riga.innerHTML = `
-                <td class="col-data-mensile">${new Date(dataKeyOriginale.replace(/-/g, '/')).toLocaleDateString('it-IT')}</td>
-                <td>${m.nomeCliente || ''}</td><td>${m.numeroPolizza || ''}</td><td>${metodoDisplay || ''}</td>
-                <td>${(m.importo || 0).toFixed(2)}</td>
-                <td class="col-provvigioni provvigione-editabile" onclick="rendiProvvigioneEditabile(this, ${index})">${(m.provvigioni || 0).toFixed(2)}</td>
-                <td>${(m.arrotondamenti || 0).toFixed(2)}</td><td>${(m.abbuoni || 0).toFixed(2)}</td><td>${(m.uscite || 0).toFixed(2)}</td>
-                <td class="col-impatto-cassa"><strong>${impattoCassa.toFixed(2)}</strong></td>
-                <td>
+                <td data-label="${headers[0]}">${new Date(dataKeyOriginale.replace(/-/g, '/')).toLocaleDateString('it-IT')}</td>
+                <td data-label="${headers[1]}">${m.nomeCliente || ''}</td>
+                <td data-label="${headers[2]}">${m.numeroPolizza || ''}</td>
+                <td data-label="${headers[3]}">${metodoDisplay || ''}</td>
+                <td data-label="${headers[4]}">${(m.importo || 0).toFixed(2)}</td>
+                <td data-label="${headers[5]}" class="col-provvigioni provvigione-editabile" onclick="rendiProvvigioneEditabile(this, ${index})">${(m.provvigioni || 0).toFixed(2)}</td>
+                <td data-label="${headers[6]}">${(m.arrotondamenti || 0).toFixed(2)}</td>
+                <td data-label="${headers[7]}">${(m.abbuoni || 0).toFixed(2)}</td>
+                <td data-label="${headers[8]}">${(m.uscite || 0).toFixed(2)}</td>
+                <td data-label="${headers[9]}" class="col-impatto-cassa"><strong>${impattoCassa.toFixed(2)}</strong></td>
+                <td data-label="${headers[10]}">
                     <button class="button-edit" onclick="modificaMovimento(${index})" ${m.isSplit || m.metodologia === 'Versamento' ? 'disabled' : ''}>Modifica</button>
                     <button class="button-delete" onclick="cancellaMovimento(${index})">Elimina</button>
                 </td>`;
         });
+        const showProvvigioni = stato.compagniaSelezionata === 'HDI' || stato.compagniaSelezionata === 'Vittoria';
         document.querySelectorAll('.col-provvigioni').forEach(el => el.style.display = showProvvigioni ? '' : 'none');
     }
 
