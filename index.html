@@ -1637,6 +1637,11 @@
         const numericFields = ['importo', 'abbuoni'];
         const editableForAuto = configTabellaCorrente.editableFieldsForAutomatic || [];
 
+        // Add new "Origine" header
+        const thOrigine = document.createElement('th');
+        thOrigine.textContent = 'Origine';
+        headerRow.appendChild(thOrigine);
+
         for (const key in configTabellaCorrente.columns) {
             const th = document.createElement('th');
             th.textContent = configTabellaCorrente.columns[key];
@@ -1652,6 +1657,16 @@
         dati.forEach((d) => {
             const riga = tbody.insertRow();
             riga.dataset.id = d.id;
+
+            // Add new "Origine" cell with icon
+            const cellOrigine = riga.insertCell();
+            cellOrigine.style.textAlign = 'center';
+            cellOrigine.style.verticalAlign = 'middle';
+            if (d.isAutomatic) {
+                cellOrigine.innerHTML = `<i class="fas fa-sync-alt" title="Origine: Giornale Cassa"></i>`;
+            } else {
+                cellOrigine.innerHTML = `<i class="fas fa-pencil-alt" title="Origine: Manuale"></i>`;
+            }
             
             for (const key in configTabellaCorrente.columns) {
                 const cell = riga.insertCell();
@@ -1679,13 +1694,10 @@
                 }
             }
             
+            // Add action cell with delete button for all rows
             const cellaAzioni = riga.insertCell();
             cellaAzioni.style.textAlign = 'center';
-            if (d.isAutomatic) {
-                cellaAzioni.innerHTML = `<i class="fa fa-lock" title="Generato da giornale cassa. Non eliminabile da qui."></i>`;
-            } else {
-                cellaAzioni.innerHTML = `<button class="button-delete" onclick="cancellaMovimentoGenerico(this)">Elimina</button>`;
-            }
+            cellaAzioni.innerHTML = `<button class="button-delete" onclick="cancellaMovimentoGenerico(this)">Elimina</button>`;
             
             aggiornaStileRiga(riga, d);
         });
@@ -1723,8 +1735,58 @@
     async function cancellaMovimentoGenerico(buttonEl) {
         const riga = buttonEl.closest('tr');
         const docId = riga.dataset.id;
-        if (confirm('Sei sicuro di voler eliminare definitivamente questo elemento?')) {
-            await db.collection(configTabellaCorrente.dataSource).doc(docId).delete();
+        if (!docId) return;
+
+        const movimento = datiTabellaCorrente.find(d => d.id === docId);
+        if (!movimento) {
+            alert("Errore: impossibile trovare il movimento da eliminare.");
+            return;
+        }
+
+        let confirmationMessage = 'Sei sicuro di voler eliminare definitivamente questo elemento?';
+        if (movimento.isAutomatic) {
+            confirmationMessage = "ATTENZIONE: Questo è un movimento automatico.\n\nEliminandolo da qui, verrà cancellato DEFINITIVAMENTE anche dal giornale di cassa originale.\n\nSei assolutamente sicuro di voler procedere?";
+        }
+
+        if (confirm(confirmationMessage)) {
+            try {
+                if (movimento.isAutomatic) {
+                    const sourceDate = movimento.sourceJournalDate;
+                    const sourceCompagnia = movimento.compagnia;
+                    if (!sourceDate || !sourceCompagnia) {
+                        throw new Error("Dati di origine mancanti, impossibile eliminare dal giornale principale.");
+                    }
+
+                    const journalDocId = `${sourceCompagnia}_${sourceDate}`;
+                    const journalDocRef = db.collection('giornaliCassa').doc(journalDocId);
+                    
+                    // The main logic is to remove the item from the source journal.
+                    // The listener on the journal will then trigger a re-render.
+                    // The logic in `gestisciMovimentiSecondari` will handle deleting the secondary record.
+                    await db.runTransaction(async (transaction) => {
+                        const journalDoc = await transaction.get(journalDocRef);
+                        if (journalDoc.exists) {
+                            const datiGiorno = journalDoc.data();
+                            const movimentiAggiornati = (datiGiorno.movimenti || []).filter(m => m.movimentoId !== docId);
+                            transaction.update(journalDocRef, { movimenti: movimentiAggiornati });
+                        }
+                    });
+                    
+                    // Also explicitly delete from the secondary collection to ensure immediate UI update and cleanup.
+                    await db.collection(configTabellaCorrente.dataSource).doc(docId).delete();
+                    await rimuoviMovimentiSecondari({ movimentoId: docId });
+
+
+                } else {
+                    // It's a manual entry, just delete it from its own table.
+                    await db.collection(configTabellaCorrente.dataSource).doc(docId).delete();
+                }
+                mostraNotificaTemporanea('generic-modal-notification', 'Elemento eliminato con successo.', 'success');
+            } catch (error) {
+                console.error("Errore durante l'eliminazione:", error);
+                mostraNotificaTemporanea('generic-modal-notification', `Errore: ${error.message}`, 'error');
+                alert(`Impossibile eliminare l'elemento: ${error.message}`);
+            }
         }
     }
     
