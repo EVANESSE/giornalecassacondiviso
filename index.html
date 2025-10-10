@@ -20,7 +20,7 @@
         body.theme-arag { --primary-color: #ffc107; --primary-color-light: #fff3cd; --primary-rgb: 255, 193, 7; }
         body.theme-helvetia { --primary-color: #dc3545; --primary-color-light: #f8d7da; --primary-rgb: 220, 53, 69; }
 
-        body { 
+        body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: #f0f2f5; color: #333; margin: 0; padding: 20px;
         }
@@ -87,9 +87,9 @@
         .decade-grid div { padding: 10px; background: #f8f9fa; border-radius: 4px; }
         .decade-grid strong { color: var(--primary-color); }
 
-        .modal-overlay { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.7); display: flex; 
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); display: flex;
             justify-content: center; align-items: center; z-index: 1000;
         }
         
@@ -216,7 +216,7 @@
         }
         .modal-toolbar .filter-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
         .modal-toolbar .action-group { display: flex; align-items: center; gap: 10px; }
-        .modal-toolbar .filter-group button, .modal-toolbar .filter-group select, .modal-toolbar .filter-group input, .modal-toolbar .action-group button { 
+        .modal-toolbar .filter-group button, .modal-toolbar .filter-group select, .modal-toolbar .filter-group input, .modal-toolbar .action-group button {
             width: auto; margin-bottom: 0; padding: 8px;
         }
         .generic-table td[contenteditable="true"]:hover { background-color: #fff3cd; cursor: text; }
@@ -225,7 +225,7 @@
         .generic-table th.col-note, .generic-table td.col-note { width: 20%; }
         .generic-table th.col-date, .generic-table td.col-date { min-width: 165px; }
         .generic-table th.col-origine, .generic-table td.col-origine { width: 60px; text-align: center;}
-        
+
         .riga-incassato { background-color: #d4edda !important; text-decoration: line-through; color: #555;}
         .riga-vecchio { background-color: #fff3cd; }
         .riga-critico { background-color: #f8d7da; }
@@ -239,8 +239,8 @@
         .save-notification.success { background-color: #28a745; }
         .save-notification.error { background-color: #dc3545; }
         
-        .app-header { 
-            display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; 
+        .app-header {
+            display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
             padding: 10px 20px; background-color: #f8f9fa; border-radius: 8px; margin-bottom: 20px; gap: 10px;
         }
         .app-header .header-group { display: flex; align-items: center; gap: 10px; }
@@ -254,8 +254,8 @@
         body.vista-mensile .col-data-mensile { display: table-cell; }
         body.vista-mensile .col-impatto-cassa, body.vista-mensile .col-cassa-teorica { display: none; }
         
-        #add-movimento-form label { 
-            font-weight: bold; margin-top: 15px; 
+        #add-movimento-form label {
+            font-weight: bold; margin-top: 15px;
             font-size: 1.1rem; display: block; color: #333;
         }
         #add-movimento-title { font-size: 1.8rem; color: #333; }
@@ -276,7 +276,7 @@
             position: relative; display: inline-block;
             width: 60px; height: 34px;
         }
-        .switch input { 
+        .switch input {
             opacity: 0; width: 0; height: 0;
         }
         .slider {
@@ -329,9 +329,9 @@
         }
 
         @media print {
-            body { 
-                -webkit-print-color-adjust: exact; 
-                print-color-adjust: exact; 
+            body {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
                 background-color: #fff;
                 color: #000;
                 margin: 0;
@@ -789,15 +789,15 @@
     const auth = firebase.auth();
     const statusIndicator = document.getElementById('status-indicator');
 
-    let stato = { 
-        compagniaSelezionata: null, 
+    let stato = {
+        compagniaSelezionata: null,
         dataSelezionata: null,
         datiGiornoCorrente: null,
         datiUtente: null,
         movimentiVistaMensile: []
     };
     
-    let unsubscribeGiornale = null; 
+    let unsubscribeGiornale = null;
     let unsubscribeAlerts = {};
     let unsubscribeGenericTable = null;
 
@@ -856,8 +856,15 @@
         const email = document.getElementById('login-email').value;
         const password = document.getElementById('login-password').value;
         const errorDiv = document.getElementById('auth-error');
-        auth.signInWithEmailAndPassword(email, password)
+
+        // Imposta la persistenza a SESSION prima di tentare il login
+        auth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
+            .then(() => {
+                // Ora che la persistenza è impostata, esegui il login
+                return auth.signInWithEmailAndPassword(email, password);
+            })
             .catch(error => {
+                // Gestisce sia errori di setPersistence sia di signIn
                 errorDiv.textContent = `Errore: ${error.message}`;
             });
     }
@@ -901,7 +908,7 @@
         if (daMostrare.length > 0) {
             daMostrare.forEach(r => {
                 const li = document.createElement('li');
-                li.innerHTML = `<strong>${r.contraente || 'N/D'}</strong> - Polizza ${r.nPolizza || 'N/D'} - Targa ${r.targa || 'N/D'}. 
+                li.innerHTML = `<strong>${r.contraente || 'N/D'}</strong> - Polizza ${r.nPolizza || 'N/D'} - Targa ${r.targa || 'N/D'}.
                                  Data riattivazione: <strong>${new Date(r.dataRiattivazione.replace(/-/g, '/')).toLocaleDateString('it-IT')}</strong>`;
                 alertList.appendChild(li);
             });
@@ -1034,7 +1041,7 @@
                         const riportoCorretto = await calcolaRiporto(stato.dataSelezionata);
                         if (Math.abs(riportoCorretto - (stato.datiGiornoCorrente.riportoIniziale || 0)) > 0.01) {
                             await aggiornaDatiGiornoCorrente({ riportoIniziale: riportoCorretto });
-                            return; 
+                            return;
                         }
                     }
                 } else {
@@ -1083,10 +1090,10 @@
     
     function creaNuovoGiorno(data, riporto) {
         const dataKey = formatDate(data);
-        return { 
-            riportoIniziale: riporto, 
-            movimenti: [], 
-            conteggioFisico: {}, 
+        return {
+            riportoIniziale: riporto,
+            movimenti: [],
+            conteggioFisico: {},
             cassaTeorica: riporto,
             dataKey: dataKey,
             compagnia: stato.compagniaSelezionata,
@@ -1333,7 +1340,7 @@
         alert("L'esportazione è iniziata. Potrebbe richiedere qualche istante. Clicca OK per continuare.");
         const backupData = {};
         const collectionsToBackup = [
-            'giornaliCassa', 'anticipi', 'abbuoni', 'bonifici_hdi_arag', 
+            'giornaliCassa', 'anticipi', 'abbuoni', 'bonifici_hdi_arag',
             'pos_hdi_arag', 'bonifici_allianz', 'bonifici_vittoria',
             'riattivazioni_vittoria', 'promemoria'
         ];
@@ -1382,7 +1389,7 @@
                         for (const collName in datiImportati) {
                             if (Array.isArray(datiImportati[collName])) {
                                 datiImportati[collName].forEach(item => {
-                                    if(!item.id) { 
+                                    if(!item.id) {
                                         console.warn(`Oggetto senza ID nella collezione ${collName}, verrà saltato.`);
                                         return;
                                     }
@@ -1474,7 +1481,6 @@
         fileInput.click();
     }
     
-    // NUOVA FUNZIONE PER SINCRONIZZARE I DATI DOPO L'IMPORTAZIONE
     async function sincronizzaDatiSecondari() {
         if (!confirm("ATTENZIONE: Questa operazione leggerà tutti i movimenti di cassa e rigenererà i dati delle 'Altre Funzioni' (Anticipi, Abbuoni, Bonifici, etc.).\n\nL'operazione è sicura ma potrebbe richiedere alcuni minuti.\n\nContinuare?")) {
             return;
@@ -1483,9 +1489,6 @@
         try {
             alert("Sincronizzazione avviata. Non chiudere la pagina fino al messaggio di completamento.");
             
-            // Opzionale: pulizia delle vecchie voci automatiche. Per sicurezza, la saltiamo e sovrascriviamo.
-            // La logica di gestisciMovimentiSecondari con set e delete è sufficiente.
-
             const giornaliSnapshot = await db.collection('giornaliCassa').get();
             let totalMovimenti = 0;
             
@@ -1517,7 +1520,7 @@
     // =========================================================
 
     async function gestisciMovimentiSecondari(movimento, dataKey, compagnia) {
-        if (!movimento.movimentoId) return; 
+        if (!movimento.movimentoId) return;
         const docId = movimento.movimentoId;
         const baseData = {
             dataKey: dataKey,
@@ -1866,7 +1869,7 @@
     function getGiornoPrecedenteLavorativo(data) {
         let dataPrec = new Date(data);
         dataPrec.setDate(data.getDate() - 1);
-        while (dataPrec.getDay() === 0 || dataPrec.getDay() === 6) { 
+        while (dataPrec.getDay() === 0 || dataPrec.getDay() === 6) {
             dataPrec.setDate(dataPrec.getDate() - 1);
         }
         return dataPrec;
@@ -2195,7 +2198,7 @@
     async function verificaChiusura() {
         const teorica = calcolaCassaTeorica();
         const fisica = calcolaConteggioFisico();
-        const differenza = fisica - teorica; 
+        const differenza = fisica - teorica;
         let result = {};
         if (Math.abs(differenza) < 0.01) {
             result = { text: `✅ I CONTI TORNANO! Differenza: € 0.00`, class: 'ok' };
