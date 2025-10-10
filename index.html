@@ -162,19 +162,16 @@
             background-color: #17a2b8; border-radius: 5px; margin-bottom: 0;
         }
 
-        /* ========= MODIFICA 3: POSIZIONE ALERT SPOSTATA IN ALTO A SINISTRA ========= */
         #alerts-sidebar {
             position: fixed;
             left: 20px;
-            top: 20px; /* Modificato da 50% */
-            /* transform: translateY(-50%); -- Rimosso per allineare in alto */
+            top: 20px;
             z-index: 1001;
             display: flex;
             flex-direction: column;
             gap: 20px;
             width: 350px;
         }
-        /* ======================= FINE MODIFICA 3 ======================= */
 
         #alerts-sidebar .alert-box {
             width: 100%;
@@ -312,21 +309,15 @@
         #auth-error { color: #dc3545; text-align: center; margin-top: 10px; font-weight: bold; }
         #user-info { font-weight: bold; color: #333; background-color: #e9ecef; padding: 8px 12px; border-radius: 5px; }
         
-        /* ========= MODIFICA 1: CONFERMA REGOLA PER COLORE FISSO ========= */
-        /* Questa regola assicura che i titoli h2 e h3 dentro gli elementi
-           con classe 'fixed-color-scheme' abbiano sempre un colore antracite,
-           indipendentemente dal tema della compagnia selezionata. */
         .fixed-color-scheme h2,
         .fixed-color-scheme h3,
         .fixed-color-scheme th {
-            color: #36454F !important; /* Colore antracite scuro */
+            color: #36454F !important;
         }
         .fixed-color-scheme h2 {
-             text-shadow: 1px 1px 3px rgba(0,0,0,0.3), -1px -1px 1px rgba(255,255,255,0.7); /* Effetto rilievo e ombra */
+             text-shadow: 1px 1px 3px rgba(0,0,0,0.3), -1px -1px 1px rgba(255,255,255,0.7);
         }
-        /* ====================== FINE MODIFICA 1 ====================== */
 
-        /* ========= MODIFICA 2: NUOVI STILI PER LA STAMPA PERSONALIZZATA ========= */
         #print-layout {
             display: none;
         }
@@ -409,7 +400,6 @@
                 padding: 6px;
             }
         }
-        /* ========================= FINE MODIFICA 2 ========================= */
     </style>
 </head>
 <body id="app-body">
@@ -687,7 +677,10 @@
             </fieldset>
             <fieldset id="box-conteggio-cassa-fieldset">
                  <div class="box" id="box-conteggio-cassa">
-                    <h2>3. Conteggio Fisico Cassa</h2>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2>3. Conteggio Fisico Cassa</h2>
+                        <button type="button" onclick="azzeraConteggio()" class="button-delete" style="width: auto; font-size: 0.8rem; padding: 5px 10px; margin-bottom: 0;">Azzera</button>
+                    </div>
                     <div id="conteggioBanconote"></div>
                     <div id="conteggioMonete"></div>
                     <div id="box-conteggio-assegni">
@@ -950,9 +943,7 @@
         stato.compagniaSelezionata = null;
         stato.datiGiornoCorrente = null;
         stato.movimentiVistaMensile = [];
-        // ========= MODIFICA 1 (VERIFICA): QUESTA RIGA RESETTA IL TEMA =========
-        document.body.className = ''; // Rimuove la classe del tema per ripristinare i colori di default
-        // =======================================================================
+        document.body.className = '';
     }
 
     function caricaGiornale(data) {
@@ -1389,21 +1380,18 @@
             lastModifiedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
 
-        // 1. Gestione Anticipi
         if (movimento.metodologia === 'Anticipo') {
             await db.collection('anticipi').doc(docId).set({ ...baseData, importo: movimento.importo, tipoAnticipo: movimento.tipoAnticipo, anticipoDi: '', note: '' }, { merge: true });
         } else {
             await db.collection('anticipi').doc(docId).delete().catch(() => {});
         }
 
-        // 2. Gestione Abbuoni
         if ((movimento.abbuoni || 0) > 0) {
             await db.collection('abbuoni').doc(docId).set({ ...baseData, abbuoni: movimento.abbuoni, personaAbbuono: movimento.personaAbbuono, note: '' }, { merge: true });
         } else {
             await db.collection('abbuoni').doc(docId).delete().catch(() => {});
         }
 
-        // 3. Gestione Bonifici e POS
         let targetCollection = null;
         if (movimento.metodologia === 'Bonifico') {
             if (compagnia === 'HDI' || compagnia === 'ARAG') targetCollection = 'bonifici_hdi_arag';
@@ -1670,7 +1658,7 @@
         return dataPrec;
     }
     
-    // ========= MODIFICA 2: NUOVA FUNZIONE DI STAMPA PERSONALIZZATA =========
+    // MODIFICA 2: Funzione di stampa corretta per includere tutte le sezioni
     function stampaPersonalizzata() {
         const printLayout = document.getElementById('print-layout');
         const mainTitle = document.getElementById('main-title').textContent;
@@ -1680,15 +1668,11 @@
 
         // --- PAGINA 1: Riepilogo Movimenti ---
         const riepilogoMovimentiBox = document.getElementById('box-riepilogo-movimenti').cloneNode(true);
-        // Rimuove la colonna Azioni dalla tabella
         riepilogoMovimentiBox.querySelectorAll('th:last-child, td:last-child').forEach(el => el.remove());
-        
-        // Per la vista semplificata, nasconde il box della cassa teorica
         if (isSimplified) {
             const cassaTeoricaBox = riepilogoMovimentiBox.querySelector('.riepilogo-totali.col-cassa-teorica');
             if (cassaTeoricaBox) cassaTeoricaBox.style.display = 'none';
         }
-        
         printHTML += `
             <div class="print-page">
                 <div class="print-header">
@@ -1700,12 +1684,16 @@
 
         // --- PAGINA 2: Conteggio e Verifica (solo per compagnie standard) ---
         if (!isSimplified) {
-            const verificaFinaleBox = document.getElementById('box-verifica-finale').cloneNode(true);
-            // Rimuove il pulsante di verifica dalla copia
-            verificaFinaleBox.querySelector('button')?.remove();
-            
-            const conteggioSoldiHTML = (document.getElementById('conteggioBanconote').outerHTML || '') + (document.getElementById('conteggioMonete').outerHTML || '');
-            const conteggioAssegniHTML = document.getElementById('box-conteggio-assegni').outerHTML || '';
+            const conteggioAssegniBoxClone = document.getElementById('box-conteggio-assegni').cloneNode(true);
+            const verificaFinaleBoxClone = document.getElementById('box-verifica-finale').cloneNode(true);
+
+            // Rimuove i pulsanti dagli elementi clonati per non mostrarli in stampa
+            conteggioAssegniBoxClone.querySelector('button')?.remove();
+            verificaFinaleBoxClone.querySelector('button')?.remove();
+
+            const conteggioSoldiHTML = document.getElementById('conteggioBanconote').outerHTML + document.getElementById('conteggioMonete').outerHTML;
+            const conteggioAssegniHTML = conteggioAssegniBoxClone.outerHTML;
+            const verificaFinaleHTML = verificaFinaleBoxClone.outerHTML;
 
             printHTML += `
                 <div class="print-page">
@@ -1715,26 +1703,22 @@
                     </div>
                     <div class="conteggio-grid">
                         <div class="conteggio-colonna">
-                            <h2>Conteggio Denaro</h2>
                             ${conteggioSoldiHTML}
                         </div>
                         <div class="conteggio-colonna">
-                             ${conteggioAssegniHTML}
+                            ${conteggioAssegniHTML}
                         </div>
                     </div>
-                    ${verificaFinaleBox.outerHTML}
+                    ${verificaFinaleHTML}
                 </div>`;
         }
 
         printLayout.innerHTML = printHTML;
 
-        // Ritardo per assicurare il rendering prima della stampa
         setTimeout(() => {
             window.print();
         }, 250);
     }
-    // ====================== FINE MODIFICA 2 ======================
-
 
     function aggiornaCampiCondizionali() {
         if (!stato.compagniaSelezionata) return;
@@ -1986,6 +1970,20 @@
             <input type="number" step="0.01" class="conteggio-assegno" placeholder="Importo" value="${importo}" oninput="aggiornaDatiGiornoCorrente({ conteggioFisico: raccogliDatiConteggio() })">
             <button type="button" class="button-delete" style="width:auto;" onclick="this.parentElement.remove(); aggiornaDatiGiornoCorrente({ conteggioFisico: raccogliDatiConteggio() });">X</button>`;
         divAssegni.appendChild(div);
+    }
+
+    // MODIFICA 1: Nuova funzione per azzerare il conteggio
+    function azzeraConteggio() {
+        if (confirm('Sei sicuro di voler azzerare tutto il conteggio fisico?')) {
+            // Svuota i campi input di banconote, monete e assegni
+            document.querySelectorAll('#box-conteggio-cassa input[type="number"]').forEach(input => {
+                input.value = '';
+            });
+            // Rimuove dinamicamente i campi assegni, dato che sono creati al volo
+            document.getElementById('lista-conteggio-assegni').innerHTML = '';
+            // Aggiorna il database con un oggetto conteggio vuoto
+            aggiornaDatiGiornoCorrente({ conteggioFisico: {} });
+        }
     }
     
     async function verificaChiusura() {
