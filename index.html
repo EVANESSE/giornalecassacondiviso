@@ -222,8 +222,9 @@
         .generic-table td[contenteditable="true"]:hover { background-color: #fff3cd; cursor: text; }
         .generic-table input, .generic-table select { padding: 4px; font-size: 0.9rem; border-radius: 3px; border: 1px solid #ccc;}
         .generic-table input[type="checkbox"] { width: auto; transform: scale(1.2); }
-        .generic-table th.col-note, .generic-table td.col-note { width: 25%; }
+        .generic-table th.col-note, .generic-table td.col-note { width: 20%; }
         .generic-table th.col-date, .generic-table td.col-date { min-width: 165px; }
+        .generic-table th.col-origine, .generic-table td.col-origine { width: 60px; text-align: center;}
         
         .riga-incassato { background-color: #d4edda !important; text-decoration: line-through; color: #555;}
         .riga-vecchio { background-color: #fff3cd; }
@@ -1640,6 +1641,7 @@
         // Add new "Origine" header
         const thOrigine = document.createElement('th');
         thOrigine.textContent = 'Origine';
+        thOrigine.classList.add('col-origine');
         headerRow.appendChild(thOrigine);
 
         for (const key in configTabellaCorrente.columns) {
@@ -1660,7 +1662,7 @@
 
             // Add new "Origine" cell with icon
             const cellOrigine = riga.insertCell();
-            cellOrigine.style.textAlign = 'center';
+            cellOrigine.classList.add('col-origine');
             cellOrigine.style.verticalAlign = 'middle';
             if (d.isAutomatic) {
                 cellOrigine.innerHTML = `<i class="fas fa-sync-alt" title="Origine: Giornale Cassa"></i>`;
@@ -1761,8 +1763,6 @@
                     const journalDocRef = db.collection('giornaliCassa').doc(journalDocId);
                     
                     // The main logic is to remove the item from the source journal.
-                    // The listener on the journal will then trigger a re-render.
-                    // The logic in `gestisciMovimentiSecondari` will handle deleting the secondary record.
                     await db.runTransaction(async (transaction) => {
                         const journalDoc = await transaction.get(journalDocRef);
                         if (journalDoc.exists) {
