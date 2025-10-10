@@ -431,6 +431,8 @@
     </style>
 </head>
 <body id="app-body">
+    <input type="file" id="vecchio-backup-input" accept=".json" style="display: none;">
+
     <div id="auth-container">
         <h2>Gestione Cassa</h2>
         
@@ -530,6 +532,10 @@
                     <button class="utility-button" onclick="mostraTabella('promemoria')">
                         <i class="fas fa-bell fa-2x"></i>
                         <span>PROMEMORIA</span>
+                    </button>
+                    <button class="utility-button" onclick="convertiVecchioBackup()" style="grid-column: 1 / -1; width: 100%; color: #dc3545;">
+                        <i class="fas fa-magic fa-2x"></i>
+                        <span>CONVERTI VECCHIO BACKUP</span>
                     </button>
                 </div>
             </div>
@@ -983,41 +989,55 @@
         const isSimplifiedView = stato.compagniaSelezionata === 'ARAG' || stato.compagniaSelezionata === 'Helvetia';
         
         if (isSimplifiedView) {
-            // Logica per vista semplificata (rimasta invariata)
-            // ...
+            stato.movimentiVistaMensile = [];
+            const selectedMonth = data.getMonth();
+            const selectedYear = data.getFullYear();
+            
+            unsubscribeGiornale = db.collection('giornaliCassa')
+                .where('compagnia', '==', stato.compagniaSelezionata)
+                .where('anno', '==', selectedYear)
+                .where('mese', '==', selectedMonth)
+                .onSnapshot(snapshot => {
+                    let movimentiDaMostrare = [];
+                    snapshot.forEach(doc => {
+                        const movimentiDelGiorno = doc.data().movimenti || [];
+                        movimentiDelGiorno.forEach((m, index) => {
+                            m.dataMovimento = doc.data().dataKey;
+                            m.originalIndex = index;
+                            movimentiDaMostrare.push(m);
+                        });
+                    });
+                    movimentiDaMostrare.sort((a, b) => new Date(b.dataMovimento) - new Date(a.dataMovimento));
+                    stato.movimentiVistaMensile = movimentiDaMostrare;
+                    aggiornaTabellaMovimenti(stato.movimentiVistaMensile);
+                    aggiornaTuttiRiepiloghi();
+                    annullaModifica();
+                }, error => console.error("Errore vista semplificata:", error));
+
         } else {
             stato.datiGiornoCorrente = null;
             const dataKey = formatDate(data);
             const docId = `${stato.compagniaSelezionata}_${dataKey}`;
             
+            // CORREZIONE BUG RIPORTO AUTOMATICO
             unsubscribeGiornale = db.collection('giornaliCassa').doc(docId).onSnapshot(async doc => {
                 statusIndicator.textContent = 'Sincronizzato';
                 statusIndicator.className = 'synced';
                 
                 if (doc.exists) {
                     stato.datiGiornoCorrente = doc.data();
-
-                    // ========= CORREZIONE BUG RIPORTO AUTOMATICO =========
-                    // Se il giorno è in modalità automatica, ricalcola sempre il riporto
-                    // per riflettere eventuali modifiche del giorno precedente.
                     if (!stato.datiGiornoCorrente.riportoIsManual) {
                         const riportoCorretto = await calcolaRiporto(stato.dataSelezionata);
-                        // Aggiorna solo se c'è una differenza per evitare scritture inutili
                         if (Math.abs(riportoCorretto - (stato.datiGiornoCorrente.riportoIniziale || 0)) > 0.01) {
-                            // aggiornaDatiGiornoCorrente aggiornerà il DB e riattiverà questo listener,
-                            // che al secondo passaggio troverà i valori allineati e non scriverà più.
                             await aggiornaDatiGiornoCorrente({ riportoIniziale: riportoCorretto });
-                            return; // Interrompe l'esecuzione per attendere il refresh del listener
+                            return; 
                         }
                     }
-                    // ========= FINE CORREZIONE BUG RIPORTO AUTOMATICO =========
-
                 } else {
                     const riporto = await calcolaRiporto(data);
                     stato.datiGiornoCorrente = creaNuovoGiorno(data, riporto);
                 }
                 renderGiornale(stato.datiGiornoCorrente);
-
             }, error => {
                 console.error("Errore nel listener del giornale: ", error);
                 statusIndicator.textContent = 'Errore Connessione';
@@ -1302,7 +1322,7 @@
     }
 
     // ===============================================
-    // IMPORT / EXPORT 
+    // IMPORT / EXPORT / CONVERSIONE
     // ===============================================
 
     async function esportaBackup() {
@@ -1383,6 +1403,74 @@
         input.click();
     }
 
+    // NUOVA FUNZIONE PER CONVERTIRE IL VECCHIO FORMATO DI BACKUP
+    function convertiVecchioBackup() {
+        const fileInput = document.getElementById('vecchio-backup-input');
+        fileInput.onchange = e => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = event => {
+                try {
+                    const vecchioBackup = JSON.parse(event.target.result);
+                    const nuovoBackup = {
+                        "giornaliCassa": [],
+                        "promemoria": vecchioBackup.promemoria || [],
+                        "riattivazioni_vittoria": vecchioBackup.riattivazioni_vittoria || [],
+                        "anticipi": [], "abbuoni": [], "bonifici_hdi_arag": [], "pos_hdi_arag": [],
+                        "bonifici_allianz": [], "bonifici_vittoria": []
+                    };
+                    
+                    const compagnie = ['Allianz', 'HDI', 'Vittoria', 'ARAG', 'Helvetia'];
+                    
+                    compagnie.forEach(compagnia => {
+                        const datiDiretti = vecchioBackup[compagnia] || {};
+                        const datiMovimenti = (vecchioBackup.datiMovimenti || {})[compagnia] || {};
+                        const registriGiornalieri = {...datiDiretti, ...datiMovimenti};
+                        
+                        for (const dataKey in registriGiornalieri) {
+                            if (Object.prototype.hasOwnProperty.call(registriGiornalieri, dataKey)) {
+                                const datiGiorno = registriGiornalieri[dataKey];
+                                const docId = `${compagnia}_${dataKey}`;
+                                const dateObj = new Date(dataKey.replace(/-/g, '/'));
+                                
+                                const nuovoDoc = {
+                                    ...datiGiorno,
+                                    id: docId,
+                                    compagnia: compagnia,
+                                    dataKey: dataKey,
+                                    anno: dateObj.getFullYear(),
+                                    mese: dateObj.getMonth() // JS getMonth() è già 0-indicizzato
+                                };
+                                nuovoBackup.giornaliCassa.push(nuovoDoc);
+                            }
+                        }
+                    });
+
+                    // Trigger download del file convertito
+                    const datiJson = JSON.stringify(nuovoBackup, null, 2);
+                    const blob = new Blob([datiJson], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `backup_convertito_per_import.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    alert("Conversione completata! Il file 'backup_convertito_per_import.json' è stato scaricato.\nOra puoi usare la funzione 'Importa' (in alto a destra) con questo nuovo file.");
+
+                } catch (error) {
+                    console.error("Errore durante la conversione del backup:", error);
+                    alert("Impossibile convertire il file. Potrebbe non essere un backup valido o essere corrotto.");
+                }
+            };
+            reader.readAsText(file);
+        };
+        alert("Seleziona il tuo vecchio file di backup per la conversione.");
+        fileInput.click();
+    }
 
     // =========================================================
     // LOGICA DI SINCRONIZZAZIONE MOVIMENTI
