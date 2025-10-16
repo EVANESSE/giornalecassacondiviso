@@ -441,7 +441,7 @@
             }
         }
         
-        /* ========= NUOVO BLOCCO OTTIMIZZAZIONE SMARTPHONE ========= */
+        /* ========= BLOCCO OTTIMIZZAZIONE SMARTPHONE ========= */
         @media screen and (max-width: 768px) {
             body {
                 padding: 5px;
@@ -462,13 +462,16 @@
                 order: -1;
                 max-width: none;
             }
+            /* CORREZIONE PER LO SCROLL */
             #company-selector-modal .modal-wrapper {
                 flex-direction: column;
                 align-items: center;
                 gap: 20px;
-                padding-top: 60px; /* Spazio per il pulsante logout */
+                padding: 70px 10px 20px 10px; /* Aumentato padding top per logout button */
                 width: 100%;
-                overflow-y: auto;
+                height: 100%; /* Altezza 100% per definire l'area di scroll */
+                overflow-y: auto; /* Attiva lo scroll verticale se il contenuto eccede */
+                box-sizing: border-box; /* Include il padding nel calcolo dell'altezza */
             }
             #company-selector-modal .modal-content {
                 width: 90vw;
@@ -527,9 +530,9 @@
                 grid-template-columns: 1fr; /* Impila le colonne */
             }
 
-            /* ========= NUOVA VISUALIZZAZIONE A SCHEDE PER LE TABELLE SU MOBILE ========= */
+            /* VISUALIZZAZIONE A SCHEDE PER LE TABELLE SU MOBILE */
             .table-container-mobile-cards {
-                overflow-x: hidden; /* Nasconde lo scroll orizzontale */
+                overflow-x: hidden;
             }
 
             .table-container-mobile-cards table {
@@ -537,7 +540,7 @@
             }
 
             .table-container-mobile-cards thead {
-                display: none; /* Nasconde gli header della tabella */
+                display: none;
             }
 
             .table-container-mobile-cards tr {
@@ -573,13 +576,12 @@
                 color: var(--primary-color);
             }
             
-            /* Stili specifici per la colonna Azioni */
             .table-container-mobile-cards td.col-azioni {
-                justify-content: center; /* Centra i pulsanti */
+                justify-content: center;
                 padding-top: 15px;
             }
             .table-container-mobile-cards td.col-azioni::before {
-                display: none; /* Nasconde il label "Azioni:" */
+                display: none;
             }
         }
     </style>
@@ -923,7 +925,6 @@
     <div id="print-layout"></div>
 
 <script>
-// ... (Il codice Javascript è stato modificato per supportare la vista a schede) ...
 // ========= NUOVA CONFIGURAZIONE FIREBASE =========
     const firebaseConfig = {
       apiKey: "AIzaSyBr8TBws4pTq6nlCmbQbq8bezgNIgd63E8",
@@ -1009,14 +1010,11 @@
         const password = document.getElementById('login-password').value;
         const errorDiv = document.getElementById('auth-error');
 
-        // Imposta la persistenza a SESSION prima di tentare il login
         auth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
             .then(() => {
-                // Ora che la persistenza è impostata, esegui il login
                 return auth.signInWithEmailAndPassword(email, password);
             })
             .catch(error => {
-                // Gestisce sia errori di setPersistence sia di signIn
                 errorDiv.textContent = `Errore: ${error.message}`;
             });
     }
@@ -1648,7 +1646,6 @@
                 const datiGiorno = doc.data();
                 if (datiGiorno.movimenti && Array.isArray(datiGiorno.movimenti)) {
                     for (const movimento of datiGiorno.movimenti) {
-                        // Assicura che ogni movimento abbia un ID univoco, creandolo se manca
                         if (!movimento.movimentoId) {
                            movimento.movimentoId = `${new Date(datiGiorno.dataKey).getTime()}-${Math.random().toString(36).substring(2, 9)}`;
                         }
@@ -1685,21 +1682,18 @@
             lastModifiedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
 
-        // 1. Gestione Anticipi
         if (movimento.metodologia === 'Anticipo') {
             await db.collection('anticipi').doc(docId).set({ ...baseData, importo: movimento.importo, tipoAnticipo: movimento.tipoAnticipo, anticipoDi: '', note: '' }, { merge: true });
         } else {
             await db.collection('anticipi').doc(docId).delete().catch(() => {});
         }
 
-        // 2. Gestione Abbuoni
         if ((movimento.abbuoni || 0) > 0) {
             await db.collection('abbuoni').doc(docId).set({ ...baseData, abbuoni: movimento.abbuoni, personaAbbuono: movimento.personaAbbuono, note: '' }, { merge: true });
         } else {
             await db.collection('abbuoni').doc(docId).delete().catch(() => {});
         }
 
-        // 3. Gestione Bonifici e POS
         let targetCollection = null;
         if (movimento.metodologia === 'Bonifico') {
             if (compagnia === 'HDI' || compagnia === 'ARAG') targetCollection = 'bonifici_hdi_arag';
@@ -1780,7 +1774,6 @@
         document.getElementById('generic-modal').style.display = 'none';
     }
 
-    // ========= MODIFICATA PER VISTA A SCHEDE =========
     function popolaTabellaGenerica(dati) {
         const table = document.getElementById('generic-table');
         const thead = table.querySelector('thead');
@@ -1788,7 +1781,6 @@
         thead.innerHTML = '';
         tbody.innerHTML = '';
 
-        // Creazione Header (per vista Desktop)
         const headerRow = thead.insertRow();
         const dateColumns = ['dataEstinzione', 'dataSospensione', 'dataRiattivazione', 'data', 'dataKey'];
         const booleanFields = ['incassato', 'riattivata', 'abbuonoRegolato', 'fatto'];
@@ -1812,7 +1804,6 @@
             const riga = tbody.insertRow();
             riga.dataset.id = d.id;
 
-            // Cella Origine
             const cellOrigine = riga.insertCell();
             cellOrigine.dataset.label = 'Origine';
             cellOrigine.classList.add('col-origine');
@@ -1821,11 +1812,10 @@
                 ? `<i class="fas fa-sync-alt" title="Origine: Giornale Cassa"></i>` 
                 : `<i class="fas fa-pencil-alt" title="Origine: Manuale"></i>`;
 
-            // Creazione celle dati con data-label per la vista a schede
             for (const key in configTabellaCorrente.columns) {
                 const cell = riga.insertCell();
                 cell.dataset.property = key;
-                cell.dataset.label = configTabellaCorrente.columns[key]; // Fondamentale per la vista a schede
+                cell.dataset.label = configTabellaCorrente.columns[key];
                 let content = d[key] || '';
                 const isEditable = !d.isAutomatic || editableForAuto.includes(key);
 
@@ -1846,10 +1836,9 @@
                 }
             }
             
-            // Cella Azioni
             const cellaAzioni = riga.insertCell();
-            cellaAzioni.classList.add('col-azioni'); // Aggiunta classe per styling mobile
-            cellaAzioni.dataset.label = 'Azioni'; // Anche se il label è nascosto, è buona pratica aggiungerlo
+            cellaAzioni.classList.add('col-azioni');
+            cellaAzioni.dataset.label = 'Azioni';
             cellaAzioni.style.textAlign = 'center';
             cellaAzioni.innerHTML = `<button class="button-delete" onclick="cancellaMovimentoGenerico(this)">Elimina</button>`;
             
@@ -2171,7 +2160,6 @@
         return dati;
     }
 
-    // ========= MODIFICATA PER VISTA A SCHEDE =========
     function aggiornaTabellaMovimenti(movimenti = []) {
         const tbody = document.getElementById('tabellaMovimenti').querySelector('tbody');
         tbody.innerHTML = '';
