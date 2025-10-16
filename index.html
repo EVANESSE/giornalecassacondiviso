@@ -440,6 +440,97 @@
                 font-size: 1rem;
             }
         }
+        
+        /* NUOVO BLOCCO PER OTTIMIZZAZIONE SMARTPHONE */
+        @media screen and (max-width: 768px) {
+            body {
+                padding: 5px;
+            }
+            
+            /* Schermata Selezione Compagnia */
+            #company-selector-modal .backup-container {
+                display: none;
+            }
+            #company-selector-modal .logout-container {
+                top: 10px;
+                left: 10px;
+            }
+            #alerts-sidebar {
+                position: static;
+                width: 100%;
+                margin-bottom: 20px;
+                order: -1;
+                max-width: none;
+            }
+            #company-selector-modal .modal-wrapper {
+                flex-direction: column;
+                align-items: center;
+                gap: 20px;
+                padding-top: 60px; /* Spazio per il pulsante logout */
+                width: 100%;
+                overflow-y: auto;
+            }
+            #company-selector-modal .modal-content {
+                width: 90vw;
+                max-width: 450px;
+            }
+            #company-selector-modal .company-button {
+                width: 100%;
+                padding: 20px 10px;
+                font-size: 1.2rem;
+            }
+            .utility-grid-container {
+                grid-template-columns: 1fr 1fr;
+                justify-items: center;
+            }
+            .utility-button {
+                width: 120px;
+                height: 95px;
+                font-size: 0.9rem;
+            }
+            
+            /* Schermata Tabelle "Altre Funzioni" (Generic Modal) */
+            .modal-full {
+                padding: 5px;
+            }
+            .modal-full .modal-content-full {
+                width: 98vw;
+                padding: 10px;
+            }
+            .modal-toolbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .modal-toolbar .filter-group, .modal-toolbar .action-group {
+                flex-direction: column;
+                align-items: stretch;
+                width: 100%;
+            }
+            .modal-toolbar .filter-group > *, .modal-toolbar .action-group > * {
+                width: 100%;
+                margin-bottom: 5px;
+            }
+            .generic-table th, .generic-table td {
+                white-space: nowrap; /* Fondamentale per la leggibilità e lo scroll orizzontale */
+                padding: 8px 12px;
+            }
+
+            /* Schermata Principale (Dentro la compagnia) */
+            .container {
+                padding: 10px;
+            }
+            .app-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .app-header .header-group {
+                justify-content: space-between;
+                flex-wrap: wrap;
+            }
+            .grid-container {
+                grid-template-columns: 1fr; /* Impila le colonne */
+            }
+        }
     </style>
 </head>
 <body id="app-body">
@@ -488,17 +579,6 @@
             <button class="header-backup-button logout-button" onclick="logoutUser()">Logout</button>
         </div>
 
-        <div id="alerts-sidebar">
-           <div id="riattivazioni-alert-container" class="alert-box">
-                <h3><i class="fas fa-calendar-check"></i> Promemoria Riattivazioni Vittoria</h3>
-                <ul id="riattivazioni-alert-list"></ul>
-           </div>
-            <div id="promemoria-alert-container" class="alert-box">
-                <h3><i class="fas fa-bell"></i> Promemoria di Oggi</h3>
-                <ul id="promemoria-alert-list"></ul>
-           </div>
-        </div>
-
         <div class="backup-container">
             <button class="header-backup-button" onclick="esportaBackup()"><i class="fa fa-download"></i> Esporta</button>
             <button class="header-backup-button" onclick="importaBackup()"><i class="fa fa-upload"></i> Importa</button>
@@ -507,6 +587,16 @@
         </div>
 
         <div class="modal-wrapper">
+            <div id="alerts-sidebar">
+               <div id="riattivazioni-alert-container" class="alert-box">
+                    <h3><i class="fas fa-calendar-check"></i> Promemoria Riattivazioni Vittoria</h3>
+                    <ul id="riattivazioni-alert-list"></ul>
+               </div>
+                <div id="promemoria-alert-container" class="alert-box">
+                    <h3><i class="fas fa-bell"></i> Promemoria di Oggi</h3>
+                    <ul id="promemoria-alert-list"></ul>
+               </div>
+            </div>
             <div class="modal-content fixed-color-scheme">
                 <h2>Seleziona la Compagnia</h2>
                 <button class="company-button" onclick="inizializzaApp('Allianz')" style="background-color:#007bff">Allianz</button>
@@ -742,19 +832,21 @@
     
         <div class="box" id="box-riepilogo-movimenti">
             <h2>Riepilogo Movimenti di Cassa</h2>
-            <table id="tabellaMovimenti">
-                <thead><tr>
-                    <th class="col-data-mensile">Data</th>
-                    <th>Cliente</th><th>Polizza</th><th>Metodo</th><th>Importo (€)</th>
-                    <th class="col-provvigioni">Provv.(€)</th>
-                    <th>Arroton. (€)</th>
-                    <th>Abbuoni (€)</th>
-                    <th>Uscite (€)</th>
-                    <th class="col-impatto-cassa">Impatto (€)</th>
-                    <th>Azioni</th>
-                 </tr></thead>
-                <tbody></tbody>
-            </table>
+            <div style="overflow-x: auto;">
+                <table id="tabellaMovimenti">
+                    <thead><tr>
+                        <th class="col-data-mensile">Data</th>
+                        <th>Cliente</th><th>Polizza</th><th>Metodo</th><th>Importo (€)</th>
+                        <th class="col-provvigioni">Provv.(€)</th>
+                        <th>Arroton. (€)</th>
+                        <th>Abbuoni (€)</th>
+                        <th>Uscite (€)</th>
+                        <th class="col-impatto-cassa">Impatto (€)</th>
+                        <th>Azioni</th>
+                     </tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
             <div class="riepilogo-totali col-cassa-teorica">Cassa Teorica Finale (Riporto + Movimenti): € <span id="cassaTeorica">0.00</span></div>
         </div>
         
