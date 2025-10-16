@@ -441,7 +441,7 @@
             }
         }
         
-        /* NUOVO BLOCCO PER OTTIMIZZAZIONE SMARTPHONE */
+        /* ========= NUOVO BLOCCO OTTIMIZZAZIONE SMARTPHONE ========= */
         @media screen and (max-width: 768px) {
             body {
                 padding: 5px;
@@ -489,7 +489,7 @@
                 font-size: 0.9rem;
             }
             
-            /* Schermata Tabelle "Altre Funzioni" (Generic Modal) */
+            /* Modali e Toolbar */
             .modal-full {
                 padding: 5px;
             }
@@ -510,10 +510,6 @@
                 width: 100%;
                 margin-bottom: 5px;
             }
-            .generic-table th, .generic-table td {
-                white-space: nowrap; /* Fondamentale per la leggibilità e lo scroll orizzontale */
-                padding: 8px 12px;
-            }
 
             /* Schermata Principale (Dentro la compagnia) */
             .container {
@@ -529,6 +525,61 @@
             }
             .grid-container {
                 grid-template-columns: 1fr; /* Impila le colonne */
+            }
+
+            /* ========= NUOVA VISUALIZZAZIONE A SCHEDE PER LE TABELLE SU MOBILE ========= */
+            .table-container-mobile-cards {
+                overflow-x: hidden; /* Nasconde lo scroll orizzontale */
+            }
+
+            .table-container-mobile-cards table {
+                border: 0;
+            }
+
+            .table-container-mobile-cards thead {
+                display: none; /* Nasconde gli header della tabella */
+            }
+
+            .table-container-mobile-cards tr {
+                display: block;
+                margin-bottom: 1rem;
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                padding: 10px;
+                background: #fff;
+            }
+
+            .table-container-mobile-cards td {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                text-align: right;
+                font-size: 0.95rem;
+                border: none;
+                border-bottom: 1px dotted #e1e1e1;
+                padding: 12px 5px;
+            }
+
+            .table-container-mobile-cards td:last-child {
+                border-bottom: 0;
+            }
+            
+            .table-container-mobile-cards td::before {
+                content: attr(data-label);
+                font-weight: bold;
+                text-align: left;
+                padding-right: 15px;
+                color: var(--primary-color);
+            }
+            
+            /* Stili specifici per la colonna Azioni */
+            .table-container-mobile-cards td.col-azioni {
+                justify-content: center; /* Centra i pulsanti */
+                padding-top: 15px;
+            }
+            .table-container-mobile-cards td.col-azioni::before {
+                display: none; /* Nasconde il label "Azioni:" */
             }
         }
     </style>
@@ -665,7 +716,7 @@
                 </div>
              </div>
             <div id="generic-modal-notification" class="save-notification"></div>
-            <div style="overflow-x: auto;">
+            <div id="generic-table-container" class="table-container-mobile-cards">
                 <table id="generic-table" class="generic-table">
                    <thead></thead>
                    <tbody></tbody>
@@ -832,7 +883,7 @@
     
         <div class="box" id="box-riepilogo-movimenti">
             <h2>Riepilogo Movimenti di Cassa</h2>
-            <div style="overflow-x: auto;">
+            <div id="main-table-container" class="table-container-mobile-cards">
                 <table id="tabellaMovimenti">
                     <thead><tr>
                         <th class="col-data-mensile">Data</th>
@@ -872,7 +923,7 @@
     <div id="print-layout"></div>
 
 <script>
-// ... (Il codice Javascript rimane invariato, le modifiche sono solo nell'HTML e CSS sopra) ...
+// ... (Il codice Javascript è stato modificato per supportare la vista a schede) ...
 // ========= NUOVA CONFIGURAZIONE FIREBASE =========
     const firebaseConfig = {
       apiKey: "AIzaSyBr8TBws4pTq6nlCmbQbq8bezgNIgd63E8",
@@ -1729,6 +1780,7 @@
         document.getElementById('generic-modal').style.display = 'none';
     }
 
+    // ========= MODIFICATA PER VISTA A SCHEDE =========
     function popolaTabellaGenerica(dati) {
         const table = document.getElementById('generic-table');
         const thead = table.querySelector('thead');
@@ -1736,18 +1788,14 @@
         thead.innerHTML = '';
         tbody.innerHTML = '';
 
+        // Creazione Header (per vista Desktop)
         const headerRow = thead.insertRow();
         const dateColumns = ['dataEstinzione', 'dataSospensione', 'dataRiattivazione', 'data', 'dataKey'];
         const booleanFields = ['incassato', 'riattivata', 'abbuonoRegolato', 'fatto'];
         const numericFields = ['importo', 'abbuoni'];
         const editableForAuto = configTabellaCorrente.editableFieldsForAutomatic || [];
-
-        // Add new "Origine" header
-        const thOrigine = document.createElement('th');
-        thOrigine.textContent = 'Origine';
-        thOrigine.classList.add('col-origine');
-        headerRow.appendChild(thOrigine);
-
+        
+        headerRow.insertCell().outerHTML = `<th class="col-origine">Origine</th>`;
         for (const key in configTabellaCorrente.columns) {
             const th = document.createElement('th');
             th.textContent = configTabellaCorrente.columns[key];
@@ -1755,7 +1803,7 @@
             if (dateColumns.includes(key)) th.classList.add('col-date');
             headerRow.appendChild(th);
         }
-        headerRow.appendChild(document.createElement('th')).textContent = 'Azioni';
+        headerRow.insertCell().outerHTML = '<th>Azioni</th>';
 
         const dateKeySort = configTabellaCorrente.filterByDateOn;
         dati.sort((a, b) => new Date(b[dateKeySort] || 0) - new Date(a[dateKeySort] || 0));
@@ -1764,23 +1812,25 @@
             const riga = tbody.insertRow();
             riga.dataset.id = d.id;
 
-            // Add new "Origine" cell with icon
+            // Cella Origine
             const cellOrigine = riga.insertCell();
+            cellOrigine.dataset.label = 'Origine';
             cellOrigine.classList.add('col-origine');
             cellOrigine.style.verticalAlign = 'middle';
-            if (d.isAutomatic) {
-                cellOrigine.innerHTML = `<i class="fas fa-sync-alt" title="Origine: Giornale Cassa"></i>`;
-            } else {
-                cellOrigine.innerHTML = `<i class="fas fa-pencil-alt" title="Origine: Manuale"></i>`;
-            }
-            
+            cellOrigine.innerHTML = d.isAutomatic 
+                ? `<i class="fas fa-sync-alt" title="Origine: Giornale Cassa"></i>` 
+                : `<i class="fas fa-pencil-alt" title="Origine: Manuale"></i>`;
+
+            // Creazione celle dati con data-label per la vista a schede
             for (const key in configTabellaCorrente.columns) {
                 const cell = riga.insertCell();
                 cell.dataset.property = key;
+                cell.dataset.label = configTabellaCorrente.columns[key]; // Fondamentale per la vista a schede
                 let content = d[key] || '';
                 const isEditable = !d.isAutomatic || editableForAuto.includes(key);
 
                 if (dateColumns.includes(key)) cell.classList.add('col-date');
+                if (key.toLowerCase().includes('note')) cell.classList.add('col-note');
 
                 if (dateColumns.includes(key)) {
                     cell.innerHTML = `<input type="date" value="${content}" onchange="salvaModificaGenerica(this)" ${!isEditable ? 'readonly style="background-color:#eee;"' : ''}>`;
@@ -1788,11 +1838,7 @@
                     cell.innerHTML = `<input type="checkbox" ${content ? 'checked' : ''} onchange="salvaModificaGenerica(this)" ${!isEditable ? 'disabled' : ''}>`;
                     cell.style.textAlign = 'center';
                 } else {
-                    if (numericFields.includes(key)) {
-                        cell.textContent = (parseFloat(content) || 0).toFixed(2);
-                    } else {
-                        cell.textContent = content;
-                    }
+                    cell.textContent = numericFields.includes(key) ? (parseFloat(content) || 0).toFixed(2) : content;
                     if (isEditable) {
                         cell.contentEditable = true;
                         cell.onblur = (e) => salvaModificaGenerica(e.target);
@@ -1800,8 +1846,10 @@
                 }
             }
             
-            // Add action cell with delete button for all rows
+            // Cella Azioni
             const cellaAzioni = riga.insertCell();
+            cellaAzioni.classList.add('col-azioni'); // Aggiunta classe per styling mobile
+            cellaAzioni.dataset.label = 'Azioni'; // Anche se il label è nascosto, è buona pratica aggiungerlo
             cellaAzioni.style.textAlign = 'center';
             cellaAzioni.innerHTML = `<button class="button-delete" onclick="cancellaMovimentoGenerico(this)">Elimina</button>`;
             
@@ -1866,7 +1914,6 @@
                     const journalDocId = `${sourceCompagnia}_${sourceDate}`;
                     const journalDocRef = db.collection('giornaliCassa').doc(journalDocId);
                     
-                    // The main logic is to remove the item from the source journal.
                     await db.runTransaction(async (transaction) => {
                         const journalDoc = await transaction.get(journalDocRef);
                         if (journalDoc.exists) {
@@ -1876,13 +1923,11 @@
                         }
                     });
                     
-                    // Also explicitly delete from the secondary collection to ensure immediate UI update and cleanup.
                     await db.collection(configTabellaCorrente.dataSource).doc(docId).delete();
                     await rimuoviMovimentiSecondari({ movimentoId: docId });
 
 
                 } else {
-                    // It's a manual entry, just delete it from its own table.
                     await db.collection(configTabellaCorrente.dataSource).doc(docId).delete();
                 }
                 mostraNotificaTemporanea('generic-modal-notification', 'Elemento eliminato con successo.', 'success');
@@ -2126,10 +2171,20 @@
         return dati;
     }
 
+    // ========= MODIFICATA PER VISTA A SCHEDE =========
     function aggiornaTabellaMovimenti(movimenti = []) {
         const tbody = document.getElementById('tabellaMovimenti').querySelector('tbody');
         tbody.innerHTML = '';
         const showProvvigioni = stato.compagniaSelezionata === 'HDI' || stato.compagniaSelezionata === 'Vittoria';
+
+        const createCell = (riga, label, content, className = '') => {
+            const cell = riga.insertCell();
+            cell.dataset.label = label;
+            cell.className = className;
+            cell.innerHTML = content;
+            return cell;
+        };
+        
         (movimenti || []).forEach((m, index) => {
             const dataKeyOriginale = m.dataMovimento || formatDate(stato.dataSelezionata);
             let impattoCassa = 0;
@@ -2144,17 +2199,21 @@
             else if (m.metodologia === 'Rientro da Anticipo') metodoDisplay += ` (${m.rientroMetodo || ''})`;
             
             const riga = tbody.insertRow();
-            riga.innerHTML = `
-                <td class="col-data-mensile">${new Date(dataKeyOriginale.replace(/-/g, '/')).toLocaleDateString('it-IT')}</td>
-                <td>${m.nomeCliente || ''}</td><td>${m.numeroPolizza || ''}</td><td>${metodoDisplay || ''}</td>
-                <td>${(m.importo || 0).toFixed(2)}</td>
-                <td class="col-provvigioni provvigione-editabile" onclick="rendiProvvigioneEditabile(this, ${index})">${(m.provvigioni || 0).toFixed(2)}</td>
-                <td>${(m.arrotondamenti || 0).toFixed(2)}</td><td>${(m.abbuoni || 0).toFixed(2)}</td><td>${(m.uscite || 0).toFixed(2)}</td>
-                <td class="col-impatto-cassa"><strong>${impattoCassa.toFixed(2)}</strong></td>
-                <td>
-                    <button class="button-edit" onclick="modificaMovimento(${index})" ${m.isSplit || m.metodologia === 'Versamento' ? 'disabled' : ''}>Modifica</button>
-                    <button class="button-delete" onclick="cancellaMovimento(${index})">Elimina</button>
-                </td>`;
+            
+            createCell(riga, 'Data', new Date(dataKeyOriginale.replace(/-/g, '/')).toLocaleDateString('it-IT'), 'col-data-mensile');
+            createCell(riga, 'Cliente', m.nomeCliente || '');
+            createCell(riga, 'Polizza', m.numeroPolizza || '');
+            createCell(riga, 'Metodo', metodoDisplay || '');
+            createCell(riga, 'Importo (€)', (m.importo || 0).toFixed(2));
+            const cellProvv = createCell(riga, 'Provv.(€)', (m.provvigioni || 0).toFixed(2), 'col-provvigioni provvigione-editabile');
+            cellProvv.onclick = () => rendiProvvigioneEditabile(cellProvv, index);
+            createCell(riga, 'Arroton. (€)', (m.arrotondamenti || 0).toFixed(2));
+            createCell(riga, 'Abbuoni (€)', (m.abbuoni || 0).toFixed(2));
+            createCell(riga, 'Uscite (€)', (m.uscite || 0).toFixed(2));
+            createCell(riga, 'Impatto (€)', `<strong>${impattoCassa.toFixed(2)}</strong>`, 'col-impatto-cassa');
+            createCell(riga, 'Azioni', `
+                <button class="button-edit" onclick="modificaMovimento(${index})" ${m.isSplit || m.metodologia === 'Versamento' ? 'disabled' : ''}>Modifica</button>
+                <button class="button-delete" onclick="cancellaMovimento(${index})">Elimina</button>`, 'col-azioni');
         });
         document.querySelectorAll('.col-provvigioni').forEach(el => el.style.display = showProvvigioni ? '' : 'none');
     }
