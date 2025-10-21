@@ -331,6 +331,33 @@
         #print-layout {
             display: none;
         }
+        
+        /* Stili per il pulsante di reset singolo */
+        .conteggio-riga {
+            display: grid;
+            grid-template-columns: 1fr 2fr 2fr 24px; /* Aggiunta colonna per il pulsante */
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 5px;
+        }
+        .btn-reset-single {
+            width: 24px;
+            height: 24px;
+            padding: 0;
+            margin: 0;
+            font-size: 0.8rem;
+            line-height: 24px;
+            text-align: center;
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .btn-reset-single:hover {
+            background-color: #f1b0b7;
+        }
+
 
         @page {
             size: A4 landscape;
@@ -431,7 +458,8 @@
                 font-size: 0.75rem;
                 margin-bottom: 2px;
             }
-            .print-page #box-conteggio-assegni .button-delete {
+            .print-page #box-conteggio-assegni .button-delete,
+            .print-page .btn-reset-single {
                 display: none;
             }
             .print-page .risultato-verifica {
@@ -768,7 +796,7 @@
                 </label>
             </div>
             <label for="riportoIniziale"><strong>Riporto da Cassa Teorica Giorno Precedente (€):</strong></label>
-            <input type="number" id="riportoIniziale" placeholder="0.00" step="0.01" oninput="aggiornaDatiGiornoCorrente({ riportoIniziale: parseFloat(this.value) || 0 })">
+            <input type="number" id="riportoIniziale" placeholder="0.00" step="0.01" onchange="aggiornaDatiGiornoCorrente({ riportoIniziale: parseFloat(this.value) || 0 })">
         </div>
     
         <div class="grid-container">
@@ -791,8 +819,15 @@
 
                         <div id="campi-standard">
                              <div id="divTipoPosAllianz" style="display:none;">
-                                <label for="tipoPosAllianz">Tipo POS:</label>
+                                <label for="tipoPosAllianz">Tipo POS Allianz:</label>
                                 <select id="tipoPosAllianz">
+                                   <option value="POS Direzione">POS Direzione</option>
+                                    <option value="POS Agenzia">POS Agenzia</option>
+                                </select>
+                            </div>
+                             <div id="divTipoPosVittoria" style="display:none;">
+                                <label for="tipoPosVittoria">Tipo POS Vittoria:</label>
+                                <select id="tipoPosVittoria">
                                    <option value="POS Direzione">POS Direzione</option>
                                     <option value="POS Agenzia">POS Agenzia</option>
                                 </select>
@@ -1105,9 +1140,20 @@
         const selectMetodo = document.getElementById('metodologia');
         selectMetodo.innerHTML = `<option value="Contanti">Contanti</option><option value="Assegno">Assegno</option><option value="POS">POS</option><option value="Bonifico">Bonifico</option>`;
         selectMetodo.add(new Option('Versamento', 'Versamento'));
+        
+        // Aggiunta metodi di pagamento specifici per compagnia
         if (compagnia === 'Allianz') {
              selectMetodo.add(new Option('Finanziamento Allianz Bank', 'Finanziamento Allianz Bank'));
+             selectMetodo.add(new Option('Pay By Link', 'Pay By Link'));
         }
+        if (compagnia === 'Vittoria') {
+             selectMetodo.add(new Option('Punti Vittoria', 'Punti Vittoria'));
+             selectMetodo.add(new Option('Carta da APP', 'Carta da APP'));
+        }
+        if (compagnia === 'HDI') {
+             selectMetodo.add(new Option('Pagamento Online', 'Pagamento Online'));
+        }
+
         if (['Allianz', 'HDI', 'Vittoria'].includes(compagnia)) {
             selectMetodo.add(new Option('Incasso Multiplo', 'Incasso Multiplo'));
         }
@@ -1326,7 +1372,9 @@
                 abbuoni: parseFloat(document.getElementById('abbuoni').value) || 0,
                 personaAbbuono: document.getElementById('personaAbbuono').value,
                 uscite: parseFloat(document.getElementById('uscite').value) || 0,
-                metodologia: metodologia, tipoPosAllianz: document.getElementById('tipoPosAllianz').value,
+                metodologia: metodologia, 
+                tipoPosAllianz: document.getElementById('tipoPosAllianz').value,
+                tipoPosVittoria: document.getElementById('tipoPosVittoria').value,
                 tipoAnticipo: document.getElementById('tipoAnticipo').value,
                 rientroMetodo: document.getElementById('rientroMetodo').value,
                 numeroAssegno: document.getElementById('numeroAssegno').value,
@@ -1404,6 +1452,7 @@
 
         document.getElementById('metodologia').value = movimento.metodologia;
         document.getElementById('tipoPosAllianz').value = movimento.tipoPosAllianz || 'POS Direzione';
+        document.getElementById('tipoPosVittoria').value = movimento.tipoPosVittoria || 'POS Direzione';
         document.getElementById('tipoAnticipo').value = movimento.tipoAnticipo || 'Anticipo Contanti';
         document.getElementById('rientroMetodo').value = movimento.rientroMetodo || 'Contanti';
         document.getElementById('numeroAssegno').value = movimento.numeroAssegno || '';
@@ -2087,7 +2136,7 @@
         document.getElementById('importo').required = !isVersamento;
 
         if (isVersamento) {
-            ['divIncassoMultiplo', 'divTipoPosAllianz', 'divTipoAnticipo', 'divRientroMetodo', 'divNumeroAssegno', 'divProvvigioni', 'divPersonaAbbuono'].forEach(id => {
+            ['divIncassoMultiplo', 'divTipoPosAllianz', 'divTipoPosVittoria', 'divTipoAnticipo', 'divRientroMetodo', 'divNumeroAssegno', 'divProvvigioni', 'divPersonaAbbuono'].forEach(id => {
                 document.getElementById(id).style.display = 'none';
             });
         } else {
@@ -2115,12 +2164,14 @@
             const showAssegno = metodologia === 'Assegno' || (showRientro && rientroMetodo === 'Assegno') || (metodologia === 'Anticipo' && tipoAnticipo === 'Anticipo Assegno');
             const showTipoAnticipo = metodologia === 'Anticipo';
             const showTipoPosAllianz = metodologia === 'POS' && compagnia === 'Allianz';
+            const showTipoPosVittoria = metodologia === 'POS' && compagnia === 'Vittoria';
             
             document.getElementById('divProvvigioni').style.display = showProvvigioni ? 'block' : 'none';
             document.getElementById('divRientroMetodo').style.display = showRientro ? 'block' : 'none';
             document.getElementById('divNumeroAssegno').style.display = showAssegno ? 'block' : 'none';
             document.getElementById('divTipoAnticipo').style.display = showTipoAnticipo ? 'block' : 'none';
             document.getElementById('divTipoPosAllianz').style.display = showTipoPosAllianz ? 'block' : 'none';
+            document.getElementById('divTipoPosVittoria').style.display = showTipoPosVittoria ? 'block' : 'none';
             
             if (!showProvvigioni) document.getElementById('provvigioni').value = '';
             if (!showAssegno) document.getElementById('numeroAssegno').value = '';
@@ -2147,6 +2198,8 @@
             html = `<label>Numero Assegno:</label><input type="text" id="numeroAssegno_multiplo${partNumber}">`;
         } else if (metodologia === 'POS' && stato.compagniaSelezionata === 'Allianz') {
             html = `<label>Tipo POS:</label><select id="tipoPosAllianz_multiplo${partNumber}"><option>POS Direzione</option><option>POS Agenzia</option></select>`;
+        } else if (metodologia === 'POS' && stato.compagniaSelezionata === 'Vittoria') {
+            html = `<label>Tipo POS:</label><select id="tipoPosVittoria_multiplo${partNumber}"><option>POS Direzione</option><option>POS Agenzia</option></select>`;
         }
         container.innerHTML = html;
     }
@@ -2154,9 +2207,11 @@
     function leggiCampiCondizionaliMultiplo(partNumber) {
         const dati = {};
         const elAssegno = document.getElementById(`numeroAssegno_multiplo${partNumber}`);
-        const elPos = document.getElementById(`tipoPosAllianz_multiplo${partNumber}`);
+        const elPosAllianz = document.getElementById(`tipoPosAllianz_multiplo${partNumber}`);
+        const elPosVittoria = document.getElementById(`tipoPosVittoria_multiplo${partNumber}`);
         if (elAssegno) dati.numeroAssegno = elAssegno.value;
-        if (elPos) dati.tipoPosAllianz = elPos.value;
+        if (elPosAllianz) dati.tipoPosAllianz = elPosAllianz.value;
+        if (elPosVittoria) dati.tipoPosVittoria = elPosVittoria.value;
         return dati;
     }
 
@@ -2183,6 +2238,7 @@
             let metodoDisplay = m.metodologia;
             if (m.metodologia === 'Anticipo') metodoDisplay = `Anticipo (${m.tipoAnticipo || ''})`;
             else if (m.metodologia === 'POS' && stato.compagniaSelezionata === 'Allianz') metodoDisplay = `POS (${m.tipoPosAllianz || ''})`;
+            else if (m.metodologia === 'POS' && stato.compagniaSelezionata === 'Vittoria') metodoDisplay = `POS (${m.tipoPosVittoria || ''})`;
             else if (m.metodologia === 'Assegno' || (m.metodologia === 'Rientro da Anticipo' && m.rientroMetodo === 'Assegno')) metodoDisplay += ` ${m.numeroAssegno || ''}`;
             else if (m.metodologia === 'Rientro da Anticipo') metodoDisplay += ` (${m.rientroMetodo || ''})`;
             
@@ -2310,25 +2366,41 @@
             const div = tipo === 'banconote' ? divBanconote : divMonete;
             const valoreSalvato = datiConteggio?.[tipo]?.[taglio] || '';
             const idTaglio = taglio.toString().replace('.', '_');
-            div.innerHTML += `
-                <div style="display: grid; grid-template-columns: 1fr 2fr 2fr; align-items: center; gap: 5px; margin-bottom: 5px;">
-                    <label>€ ${taglio.toFixed(2)}</label>
-                    <input type="number" oninput="aggiornaDatiGiornoCorrente({ conteggioFisico: raccogliDatiConteggio() })" data-valore="${taglio}" data-tipo="${tipo}" value="${valoreSalvato}">
-                    <span id="subtotale-${idTaglio}">€ 0.00</span>
-                </div>`;
+            const inputId = `input-conteggio-${idTaglio}`;
+            
+            const riga = document.createElement('div');
+            riga.className = 'conteggio-riga';
+            riga.innerHTML = `
+                <label for="${inputId}">€ ${taglio.toFixed(2)}</label>
+                <input type="number" id="${inputId}" onblur="aggiornaDatiGiornoCorrente({ conteggioFisico: raccogliDatiConteggio() })" data-valore="${taglio}" data-tipo="${tipo}" value="${valoreSalvato}">
+                <span id="subtotale-${idTaglio}">€ 0.00</span>
+                <button class="btn-reset-single" onclick="azzeraCampoSingolo('${inputId}')" title="Azzera riga">×</button>
+            `;
+            div.appendChild(riga);
         });
         const divAssegni = document.getElementById('lista-conteggio-assegni');
         divAssegni.innerHTML = '';
         (datiConteggio?.assegni || []).forEach(importo => aggiungiCampoAssegnoConteggio(importo));
         calcolaConteggioFisico();
     }
+    
+    function azzeraCampoSingolo(inputId) {
+        const input = document.getElementById(inputId);
+        if (input) {
+            input.value = '';
+            // Simula l'evento onblur per salvare l'aggiornamento
+            const event = new Event('blur');
+            input.dispatchEvent(event);
+        }
+    }
+
 
     function aggiungiCampoAssegnoConteggio(importo = '') {
         const divAssegni = document.getElementById('lista-conteggio-assegni');
         const div = document.createElement('div');
         div.style.display = 'flex'; div.style.gap = '5px'; div.style.marginBottom = '5px';
         div.innerHTML = `
-            <input type="number" step="0.01" class="conteggio-assegno" placeholder="Importo" value="${importo}" oninput="aggiornaDatiGiornoCorrente({ conteggioFisico: raccogliDatiConteggio() })">
+            <input type="number" step="0.01" class="conteggio-assegno" placeholder="Importo" value="${importo}" onblur="aggiornaDatiGiornoCorrente({ conteggioFisico: raccogliDatiConteggio() })">
             <button type="button" class="button-delete" style="width:auto;" onclick="this.parentElement.remove(); aggiornaDatiGiornoCorrente({ conteggioFisico: raccogliDatiConteggio() });">X</button>`;
         divAssegni.appendChild(div);
     }
