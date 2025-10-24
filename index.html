@@ -260,7 +260,11 @@
         #status-indicator.error { background-color: #dc3545; }
         
         .col-data-mensile { display: none; }
+        .col-totale-mensile { display: none; } /* Nascondi di default */
+
         body.vista-mensile .col-data-mensile { display: table-cell; }
+        body.vista-mensile .col-totale-mensile { display: block; } /* Mostra in vista mensile */
+        
         body.vista-mensile .col-impatto-cassa, body.vista-mensile .col-cassa-teorica { display: none; }
         
         #add-movimento-form label {
@@ -934,6 +938,10 @@
                      </tr></thead>
                     <tbody></tbody>
                 </table>
+            </div>
+            <!-- NUOVA RIGA PER TOTALE MENSILE -->
+            <div class="riepilogo-totali col-totale-mensile">
+                Totale Titoli Incassati nel Mese: € <span id="totaleIncassatoMese">0.00</span>
             </div>
             <div class="riepilogo-totali col-cassa-teorica">Cassa Teorica Finale (Riporto + Movimenti): € <span id="cassaTeorica">0.00</span></div>
         </div>
@@ -2071,7 +2079,11 @@
         if (isSimplified) {
             const cassaTeoricaBox = riepilogoMovimentiBox.querySelector('.riepilogo-totali.col-cassa-teorica');
             if (cassaTeoricaBox) cassaTeoricaBox.style.display = 'none';
+        } else {
+             const totaleMensileBox = riepilogoMovimentiBox.querySelector('.riepilogo-totali.col-totale-mensile');
+            if (totaleMensileBox) totaleMensileBox.style.display = 'none';
         }
+        
         printHTML += `
             <div class="print-page">
                 <div class="print-header">
@@ -2271,10 +2283,16 @@
     
     function aggiornaTuttiRiepiloghi() {
         if (!stato.compagniaSelezionata) return;
-        if (!document.body.classList.contains('vista-mensile')) {
+        
+        if (document.body.classList.contains('vista-mensile')) {
+            // Calcola il totale del mese per ARAG/Helvetia
+            calcolaTotaleIncassatoMese();
+        } else {
+            // Logica standard per le altre compagnie
             calcolaCassaTeorica();
             calcolaConteggioFisico();
         }
+
         if (stato.compagniaSelezionata === 'HDI' || stato.compagniaSelezionata === 'Vittoria') {
             aggiornaRiepilogoProvvigioni();
         }
@@ -2325,6 +2343,19 @@
         if(stato.datiGiornoCorrente) stato.datiGiornoCorrente.cassaTeorica = cassaTeorica;
         document.getElementById('cassaTeorica').textContent = cassaTeorica.toFixed(2);
         return cassaTeorica;
+    }
+    
+    function calcolaTotaleIncassatoMese() {
+        if (!stato.movimentiVistaMensile || stato.movimentiVistaMensile.length === 0) {
+            document.getElementById('totaleIncassatoMese').textContent = '0.00';
+            return;
+        }
+        
+        const totale = stato.movimentiVistaMensile.reduce((acc, m) => {
+            return acc + (m.importo || 0);
+        }, 0);
+        
+        document.getElementById('totaleIncassatoMese').textContent = totale.toFixed(2);
     }
     
     function calcolaConteggioFisico() {
