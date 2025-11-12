@@ -726,6 +726,10 @@
                         <i class="fas fa-bell fa-2x"></i>
                         <span>PROMEMORIA</span>
                     </button>
+                    <button class="utility-button" onclick="apriRicercaIncassi()">
+                    <i class="fas fa-search fa-2x"></i>
+                    <span>RICERCA INCASSI</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -2538,6 +2542,121 @@
         }, 2000);
     }
 
+</script>
+
+<div class="modal-overlay modal-full" id="ricerca-incassi-modal" style="display:none;">
+  <div class="modal-content-full fixed-color-scheme">
+    <div class="modal-toolbar">
+      <h2>Ricerca Incassi</h2>
+      <div class="filter-group">
+        <label>Inserisci nominativo (obbligatorio)</label>
+        <input type="text" id="ricerca-nominativo" required placeholder="Nominativo" style="width:250px;">
+        <label>Mese</label>
+        <select id="ricerca-mese">
+          <option value="">Tutti</option>
+          <option value="0">Gennaio</option>
+          <option value="1">Febbraio</option>
+          <option value="2">Marzo</option>
+          <option value="3">Aprile</option>
+          <option value="4">Maggio</option>
+          <option value="5">Giugno</option>
+          <option value="6">Luglio</option>
+          <option value="7">Agosto</option>
+          <option value="8">Settembre</option>
+          <option value="9">Ottobre</option>
+          <option value="10">Novembre</option>
+          <option value="11">Dicembre</option>
+        </select>
+        <label>Anno</label>
+        <select id="ricerca-anno"></select>
+        <label>Compagnia</label>
+        <select id="ricerca-compagnia">
+          <option value="">Tutte</option>
+          <option value="Allianz">Allianz</option>
+          <option value="HDI">HDI</option>
+          <option value="Vittoria">Vittoria</option>
+          <option value="ARAG">ARAG</option>
+          <option value="Helvetia">Helvetia</option>
+        </select>
+        <button onclick="eseguiRicercaIncassi()">Cerca</button>
+        <button class="button-secondary" onclick="chiudiRicercaIncassi()">Chiudi</button>
+      </div>
+    </div>
+    <div id="ricerca-incassi-risultati"></div>
+  </div>
+</div>
+<script>
+  // Popola dinamicamente gli anni disponibili (puoi migliorarlo in base ai dati effettivi)
+  window.onload = function() {
+    var selectAnno = document.getElementById('ricerca-anno');
+    if (selectAnno) {
+      var annoCorrente = new Date().getFullYear();
+      selectAnno.innerHTML = '<option value="">Tutti</option>';
+      for (let i = annoCorrente; i >= annoCorrente - 8; i--) {
+        selectAnno.innerHTML += '<option value="' + i + '">' + i + '</option>';
+      }
+    }
+  };
+
+  function apriRicercaIncassi() {
+      document.getElementById('ricerca-incassi-modal').style.display = 'flex';
+  }
+
+  function chiudiRicercaIncassi() {
+      document.getElementById('ricerca-incassi-modal').style.display = 'none';
+      document.getElementById('ricerca-incassi-risultati').innerHTML = '';
+  }
+
+  async function eseguiRicercaIncassi() {
+      const nominativo = document.getElementById('ricerca-nominativo').value.trim();
+      if (!nominativo) {
+          alert('Inserisci almeno il nominativo.');
+          return;
+      }
+      const mese = document.getElementById('ricerca-mese').value;
+      const anno = document.getElementById('ricerca-anno').value;
+      const compagnia = document.getElementById('ricerca-compagnia').value;
+      const risultatiContainer = document.getElementById('ricerca-incassi-risultati');
+      risultatiContainer.innerHTML = 'Ricerca in corso...';
+
+      // Query Firestore su tutte le compagnie di giornaliCassa e filtra i movimenti
+      let query = db.collection('giornaliCassa');
+      if (compagnia) query = query.where('compagnia', '==', compagnia);
+      if (anno) query = query.where('anno', '==', parseInt(anno));
+      if (mese) query = query.where('mese', '==', parseInt(mese));
+
+      query.get().then(snapshot => {
+        let risultati = [];
+        snapshot.forEach(doc => {
+          const dati = doc.data();
+          (dati.movimenti||[]).forEach(mov => {
+            if (mov.nomeCliente && mov.nomeCliente.toLowerCase().includes(nominativo.toLowerCase())) {
+              risultati.push({...mov, compagnia: dati.compagnia, data: dati.dataKey});
+            }
+          });
+        });
+        if (risultati.length === 0) {
+            risultatiContainer.innerHTML = "<p>Nessun risultato trovato.</p>";
+        } else {
+            let html = '<table class="generic-table"><thead><tr>';
+            html += '<th>Data</th><th>Compagnia</th><th>Cliente</th><th>Polizza</th><th>Importo</th><th>Metodo</th></tr></thead><tbody>';
+            risultati.forEach(r => {
+                html += `<tr>
+                  <td>${new Date(r.data.replace(/-/g, '/')).toLocaleDateString('it-IT')}</td>
+                  <td>${r.compagnia||'-'}</td>
+                  <td>${r.nomeCliente||'-'}</td>
+                  <td>${r.numeroPolizza||'-'}</td>
+                  <td>${(r.importo ?? 0).toFixed(2)}</td>
+                  <td>${r.metodologia||'-'}</td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+            risultatiContainer.innerHTML = html;
+        }
+      }).catch(e => {
+        risultatiContainer.innerHTML = 'Errore nella ricerca. ' + e;
+      });
+  }
 </script>
 </body>
 </html>
