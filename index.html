@@ -817,6 +817,9 @@
                         <input type="hidden" id="editingMovimentoData" value="">
                         <label for="metodologia">Metodologia Incasso:</label>
                         <select id="metodologia" onchange="aggiornaCampiCondizionali()"></select>
+
+                        <label for="dataMovimento">Data movimento</label>
+                        <input type="date" id="dataMovimento" required>
                         
                         <div id="divVersamento" style="display:none;">
                             <label for="versamentoContanti">Versamento Contanti (€):</label>
@@ -1187,6 +1190,8 @@
         }
 
         document.getElementById('date-selector').valueAsDate = new Date();
+    const dmEl = document.getElementById('dataMovimento');
+    if (dmEl) dmEl.value = formatDate(new Date());
         caricaGiornale(new Date());
     }
 
@@ -1203,6 +1208,8 @@
     function caricaGiornale(data) {
         if (!data || !stato.compagniaSelezionata) return;
         stato.dataSelezionata = data;
+    const dmEl = document.getElementById('dataMovimento');
+    if (dmEl) dmEl.value = formatDate(data);
         
         if (unsubscribeGiornale) unsubscribeGiornale();
 
@@ -1347,154 +1354,305 @@
     }
 
     async function processaFormMovimento() {
-        const isSimplifiedView = stato.compagniaSelezionata === 'ARAG' || stato.compagniaSelezionata === 'Helvetia';
+    const editingIndex = document.getElementById('editingIndex').value;
+    const editingMovimentoId = document.getElementById('editingMovimentoId').value;
+    const editingMovimentoData = document.getElementById('editingMovimentoData').value;
 
-        const editingIndex = document.getElementById('editingIndex').value;
-        const editingMovimentoId = document.getElementById('editingMovimentoId').value;
-        const editingMovimentoData = document.getElementById('editingMovimentoData').value;
-        
-        const baseMovimento = {
-            createdBy: stato.datiUtente.displayName,
-            createdAt: new Date().toISOString(),
-            movimentoId: editingMovimentoId || `${new Date().getTime()}-${Math.random().toString(36).substring(2, 9)}`
-        };
+    // Default = giorno selezionato in alto; modificabile solo se voluto
+    const dataMovimentoEl = document.getElementById('dataMovimento');
+    const targetDateKey = (dataMovimentoEl && dataMovimentoEl.value)
+        ? dataMovimentoEl.value
+        : formatDate(stato.dataSelezionata || new Date());
 
-        const metodologia = document.getElementById('metodologia').value;
-        let nuoviMovimenti = [];
+    if (!targetDateKey) {
+        alert('Seleziona la data del movimento.');
+        return;
+    }
 
-        if (metodologia === 'Versamento') {
-            const versamentoContanti = parseFloat(document.getElementById('versamentoContanti').value) || 0;
-            const versamentoAssegni = parseFloat(document.getElementById('versamentoAssegni').value) || 0;
-            if (versamentoContanti > 0) nuoviMovimenti.push({ ...baseMovimento, movimentoId: `${baseMovimento.movimentoId}-1`, metodologia: 'Versamento', nomeCliente: 'Versamento Contanti', uscite: versamentoContanti });
-            if (versamentoAssegni > 0) nuoviMovimenti.push({ ...baseMovimento, movimentoId: `${baseMovimento.movimentoId}-2`, metodologia: 'Versamento', nomeCliente: 'Versamento Assegni', uscite: versamentoAssegni });
-        } else if (metodologia === 'Incasso Multiplo') {
-            const common = { ...baseMovimento, nomeCliente: document.getElementById('nomeCliente').value, numeroPolizza: document.getElementById('numeroPolizza').value, provvigioni: parseFloat(document.getElementById('provvigioni').value) || 0, arrotondamenti: parseFloat(document.getElementById('arrotondamenti').value) || 0, abbuoni: parseFloat(document.getElementById('abbuoni').value) || 0, personaAbbuono: document.getElementById('personaAbbuono').value, uscite: parseFloat(document.getElementById('uscite').value) || 0 };
-            const importo1 = parseFloat(document.getElementById('importoMultiplo1').value) || 0;
-            const importo2 = parseFloat(document.getElementById('importoMultiplo2').value) || 0;
-            if (Math.abs((parseFloat(document.getElementById('importo').value) || 0) - (importo1 + importo2)) > 0.01) { alert("La somma delle parti non corrisponde all'importo totale."); return; }
-            nuoviMovimenti.push({ ...common, movimentoId: `${baseMovimento.movimentoId}-1`, isSplit: true, importo: importo1, metodologia: document.getElementById('metodologiaMultiplo1').value, ...leggiCampiCondizionaliMultiplo(1) });
-            nuoviMovimenti.push({ ...common, movimentoId: `${baseMovimento.movimentoId}-2`, isSplit: true, importo: importo2, metodologia: document.getElementById('metodologiaMultiplo2').value, ...leggiCampiCondizionaliMultiplo(2) });
-        } else {
+    const isSimplifiedView = (stato.compagniaSelezionata === 'ARAG' || stato.compagniaSelezionata === 'Helvetia');
+
+    const baseMovimento = {
+        createdBy: stato.datiUtente.displayName,
+        createdAt: new Date().toISOString(),
+        movimentoId: editingMovimentoId || `${new Date().getTime()}-${Math.random().toString(36).substring(2, 9)}`,
+        dataMovimento: targetDateKey
+    };
+
+    const metodologia = document.getElementById('metodologia').value;
+    let nuoviMovimenti = [];
+
+    if (metodologia === 'Versamento') {
+        const versamentoContanti = parseFloat(document.getElementById('versamentoContanti').value) || 0;
+        const versamentoAssegni = parseFloat(document.getElementById('versamentoAssegni').value) || 0;
+
+        if (versamentoContanti > 0) {
             nuoviMovimenti.push({
                 ...baseMovimento,
-                nomeCliente: document.getElementById('nomeCliente').value, numeroPolizza: document.getElementById('numeroPolizza').value,
-                importo: parseFloat(document.getElementById('importo').value) || 0,
-                provvigioni: parseFloat(document.getElementById('provvigioni').value) || 0,
-                arrotondamenti: parseFloat(document.getElementById('arrotondamenti').value) || 0,
-                abbuoni: parseFloat(document.getElementById('abbuoni').value) || 0,
-                personaAbbuono: document.getElementById('personaAbbuono').value,
-                uscite: parseFloat(document.getElementById('uscite').value) || 0,
-                metodologia: metodologia, 
-                tipoPosAllianz: document.getElementById('tipoPosAllianz').value,
-                tipoPosVittoria: document.getElementById('tipoPosVittoria').value,
-                tipoAnticipo: document.getElementById('tipoAnticipo').value,
-                rientroMetodo: document.getElementById('rientroMetodo').value,
-                numeroAssegno: document.getElementById('numeroAssegno').value,
+                movimentoId: `${baseMovimento.movimentoId}-1`,
+                metodologia: 'Versamento',
+                nomeCliente: 'Versamento Contanti',
+                uscite: versamentoContanti
             });
         }
-        
-        let movimentiDaSincronizzare = nuoviMovimenti;
+        if (versamentoAssegni > 0) {
+            nuoviMovimenti.push({
+                ...baseMovimento,
+                movimentoId: `${baseMovimento.movimentoId}-2`,
+                metodologia: 'Versamento',
+                nomeCliente: 'Versamento Assegni',
+                uscite: versamentoAssegni
+            });
+        }
+        if (nuoviMovimenti.length === 0) {
+            alert('Inserisci almeno un importo di versamento.');
+            return;
+        }
 
-        if(isSimplifiedView) {
-            const targetDateKey = editingMovimentoData || formatDate(new Date());
-            const docId = `${stato.compagniaSelezionata}_${targetDateKey}`;
-            const docRef = db.collection('giornaliCassa').doc(docId);
-            
-            try {
-                 statusIndicator.textContent = 'Salvataggio...';
-                 statusIndicator.className = 'saving';
-                await db.runTransaction(async (transaction) => {
-                    const doc = await transaction.get(docRef);
-                    const targetDate = new Date(targetDateKey.replace(/-/g, '/'));
-                    const datiGiorno = doc.exists ? doc.data() : creaNuovoGiorno(targetDate, 0);
-                    let movimentiAggiornati = [...(datiGiorno.movimenti || [])];
+    } else if (metodologia === 'Incasso Multiplo') {
+        const common = {
+            ...baseMovimento,
+            nomeCliente: document.getElementById('nomeCliente').value,
+            numeroPolizza: document.getElementById('numeroPolizza').value,
+            provvigioni: parseFloat(document.getElementById('provvigioni').value) || 0,
+            arrotondamenti: parseFloat(document.getElementById('arrotondamenti').value) || 0,
+            abbuoni: parseFloat(document.getElementById('abbuoni').value) || 0,
+            personaAbbuono: document.getElementById('personaAbbuono').value,
+            uscite: parseFloat(document.getElementById('uscite').value) || 0
+        };
 
-                    if (editingIndex !== "") {
-                        const movimentoOriginale = stato.movimentiVistaMensile[editingIndex];
-                        if (movimentoOriginale.dataMovimento !== targetDateKey) {
-                            throw new Error("La data del movimento non può essere cambiata.");
-                        }
-                        const indexNelDocumento = movimentiAggiornati.findIndex(m => m.movimentoId === movimentoOriginale.movimentoId);
-                        if(indexNelDocumento > -1) {
-                            const vecchioMovimento = movimentiAggiornati[indexNelDocumento];
-                            await rimuoviMovimentiSecondari(vecchioMovimento);
-                            movimentiAggiornati[indexNelDocumento] = nuoviMovimenti[0];
-                        } else {
-                            movimentiAggiornati.push(nuoviMovimenti[0]);
-                        }
-                    } else {
-                        movimentiAggiornati.push(...nuoviMovimenti);
-                    }
-                    transaction.set(docRef, { ...datiGiorno, movimenti: movimentiAggiornati }, { merge: true });
-                });
-                for (const mov of movimentiDaSincronizzare) {
-                    await gestisciMovimentiSecondari(mov, targetDateKey, stato.compagniaSelezionata);
-                }
+        const importoTot = parseFloat(document.getElementById('importo').value) || 0;
+        const importo1 = parseFloat(document.getElementById('importoMultiplo1').value) || 0;
+        const importo2 = parseFloat(document.getElementById('importoMultiplo2').value) || 0;
 
-            } catch (error) {
-                 console.error("Errore salvataggio in vista semplificata: ", error);
-                 statusIndicator.textContent = 'Errore Salvataggio';
-                 statusIndicator.className = 'error';
-            }
+        if (Math.abs(importoTot - (importo1 + importo2)) > 0.01) {
+            alert("La somma delle parti non corrisponde all'importo totale.");
+            return;
+        }
+
+        nuoviMovimenti.push({
+            ...common,
+            movimentoId: `${baseMovimento.movimentoId}-1`,
+            isSplit: true,
+            importo: importo1,
+            metodologia: document.getElementById('metodologiaMultiplo1').value,
+            ...leggiCampiCondizionaliMultiplo(1)
+        });
+
+        nuoviMovimenti.push({
+            ...common,
+            movimentoId: `${baseMovimento.movimentoId}-2`,
+            isSplit: true,
+            importo: importo2,
+            metodologia: document.getElementById('metodologiaMultiplo2').value,
+            ...leggiCampiCondizionaliMultiplo(2)
+        });
+
+    } else {
+        nuoviMovimenti.push({
+            ...baseMovimento,
+            nomeCliente: document.getElementById('nomeCliente').value,
+            numeroPolizza: document.getElementById('numeroPolizza').value,
+            importo: parseFloat(document.getElementById('importo').value) || 0,
+            provvigioni: parseFloat(document.getElementById('provvigioni').value) || 0,
+            arrotondamenti: parseFloat(document.getElementById('arrotondamenti').value) || 0,
+            abbuoni: parseFloat(document.getElementById('abbuoni').value) || 0,
+            personaAbbuono: document.getElementById('personaAbbuono').value,
+            uscite: parseFloat(document.getElementById('uscite').value) || 0,
+            metodologia: metodologia,
+            tipoPosAllianz: document.getElementById('tipoPosAllianz').value,
+            tipoPosVittoria: document.getElementById('tipoPosVittoria').value,
+            tipoAnticipo: document.getElementById('tipoAnticipo').value,
+            rientroMetodo: document.getElementById('rientroMetodo').value,
+            numeroAssegno: document.getElementById('numeroAssegno').value
+        });
+    }
+
+    const movimentiDaSincronizzare = nuoviMovimenti;
+
+    // Recupero movimento originale (se sto modificando)
+    const oldMovement = (editingIndex !== "")
+        ? (isSimplifiedView ? stato.movimentiVistaMensile[editingIndex] : stato.datiGiornoCorrente.movimenti[editingIndex])
+        : null;
+
+    const originalDateKey = (oldMovement && oldMovement.dataMovimento)
+        ? oldMovement.dataMovimento
+        : (editingMovimentoData || targetDateKey);
+
+    const datiDefault = {
+        lastModifiedBy: stato.datiUtente.displayName,
+        lastModifiedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    const targetDocId = `${stato.compagniaSelezionata}_${targetDateKey}`;
+    const targetDocRef = db.collection('giornaliCassa').doc(targetDocId);
+
+    try {
+        statusIndicator.textContent = 'Salvataggio...';
+        statusIndicator.className = 'saving';
+
+        // In modifica: rimuovo prima i secondari del vecchio movimento
+        if (oldMovement) {
+            await rimuoviMovimentiSecondari(oldMovement);
+        }
+
+        // Assicura esistenza doc target
+        const targetSnap = await targetDocRef.get();
+        if (!targetSnap.exists) {
+            const targetDateObj = new Date(targetDateKey.replace(/-/g, '/'));
+            const riportoTarget = isSimplifiedView ? 0 : await calcolaRiporto(targetDateObj);
+            await targetDocRef.set({ ...creaNuovoGiorno(targetDateObj, riportoTarget), ...datiDefault }, { merge: true });
+        }
+
+        // MODIFICA con cambio data: sposto dal vecchio doc al nuovo doc (NO DUPLICATI)
+        if (oldMovement && originalDateKey && originalDateKey !== targetDateKey) {
+            const oldDocId = `${stato.compagniaSelezionata}_${originalDateKey}`;
+            const oldDocRef = db.collection('giornaliCassa').doc(oldDocId);
+
+            await db.runTransaction(async (transaction) => {
+                const oldSnap = await transaction.get(oldDocRef);
+                const newSnap = await transaction.get(targetDocRef);
+
+                const oldDateObj = new Date(originalDateKey.replace(/-/g, '/'));
+                const newDateObj = new Date(targetDateKey.replace(/-/g, '/'));
+
+                const oldData = oldSnap.exists ? oldSnap.data() : creaNuovoGiorno(oldDateObj, 0);
+                const newData = newSnap.exists ? newSnap.data() : creaNuovoGiorno(newDateObj, 0);
+
+                const oldMov = [...(oldData.movimenti || [])].filter(m => m.movimentoId !== oldMovement.movimentoId);
+                let newMov = [...(newData.movimenti || [])];
+
+                // In modifica aggiorno solo il movimento principale
+                const idxNew = newMov.findIndex(m => m.movimentoId === oldMovement.movimentoId);
+                if (idxNew >= 0) newMov[idxNew] = nuoviMovimenti[0];
+                else newMov.push(nuoviMovimenti[0]);
+
+                transaction.set(oldDocRef, {
+                    ...oldData,
+                    ...datiDefault,
+                    movimenti: oldMov,
+                    compagnia: stato.compagniaSelezionata,
+                    dataKey: originalDateKey,
+                    anno: oldDateObj.getFullYear(),
+                    mese: oldDateObj.getMonth()
+                }, { merge: true });
+
+                transaction.set(targetDocRef, {
+                    ...newData,
+                    ...datiDefault,
+                    movimenti: newMov,
+                    compagnia: stato.compagniaSelezionata,
+                    dataKey: targetDateKey,
+                    anno: newDateObj.getFullYear(),
+                    mese: newDateObj.getMonth()
+                }, { merge: true });
+            });
 
         } else {
-            let movimentiAggiornati = [...(stato.datiGiornoCorrente.movimenti || [])];
-            if (editingIndex !== "") {
-                const vecchioMovimento = movimentiAggiornati[editingIndex];
-                await rimuoviMovimentiSecondari(vecchioMovimento);
-                movimentiAggiornati[editingIndex] = nuoviMovimenti[0];
-            } else {
-                movimentiAggiornati.push(...nuoviMovimenti);
-            }
-            await aggiornaDatiGiornoCorrente({ movimenti: movimentiAggiornati }, movimentiDaSincronizzare);
+            // Inserimento oppure modifica senza cambio data: scrivo sul doc target
+            await db.runTransaction(async (transaction) => {
+                const snap = await transaction.get(targetDocRef);
+                const targetDateObj = new Date(targetDateKey.replace(/-/g, '/'));
+                const datiGiorno = snap.exists ? snap.data() : creaNuovoGiorno(targetDateObj, 0);
+
+                let movimentiAggiornati = [...(datiGiorno.movimenti || [])];
+
+                if (oldMovement) {
+                    const idx = movimentiAggiornati.findIndex(m => m.movimentoId === oldMovement.movimentoId);
+                    if (idx >= 0) movimentiAggiornati[idx] = nuoviMovimenti[0];
+                    else movimentiAggiornati.push(nuoviMovimenti[0]);
+                } else {
+                    movimentiAggiornati.push(...nuoviMovimenti);
+                }
+
+                transaction.set(targetDocRef, {
+                    ...datiGiorno,
+                    ...datiDefault,
+                    movimenti: movimentiAggiornati,
+                    compagnia: stato.compagniaSelezionata,
+                    dataKey: targetDateKey,
+                    anno: targetDateObj.getFullYear(),
+                    mese: targetDateObj.getMonth()
+                }, { merge: true });
+            });
         }
-        
-        annullaModifica();
-    }
-    
-    function modificaMovimento(index) {
-        const isSimplifiedView = stato.compagniaSelezionata === 'ARAG' || stato.compagniaSelezionata === 'Helvetia';
-        const movimento = isSimplifiedView ? stato.movimentiVistaMensile[index] : stato.datiGiornoCorrente.movimenti[index];
 
-        document.getElementById('editingIndex').value = index;
-        document.getElementById('editingMovimentoId').value = movimento.movimentoId;
-        if(isSimplifiedView) {
-            document.getElementById('editingMovimentoData').value = movimento.dataMovimento;
+        // Rigenero secondari sul giorno destinazione
+        for (const mov of movimentiDaSincronizzare) {
+            await gestisciMovimentiSecondari(mov, targetDateKey, stato.compagniaSelezionata);
         }
 
-        document.getElementById('metodologia').value = movimento.metodologia;
-        document.getElementById('tipoPosAllianz').value = movimento.tipoPosAllianz || 'POS Direzione';
-        document.getElementById('tipoPosVittoria').value = movimento.tipoPosVittoria || 'POS Direzione';
-        document.getElementById('tipoAnticipo').value = movimento.tipoAnticipo || 'Anticipo Contanti';
-        document.getElementById('rientroMetodo').value = movimento.rientroMetodo || 'Contanti';
-        document.getElementById('numeroAssegno').value = movimento.numeroAssegno || '';
-        document.getElementById('nomeCliente').value = movimento.nomeCliente;
-        document.getElementById('numeroPolizza').value = movimento.numeroPolizza;
-        document.getElementById('importo').value = movimento.importo;
-        document.getElementById('provvigioni').value = movimento.provvigioni || '';
-        document.getElementById('arrotondamenti').value = movimento.arrotondamenti || '';
-        document.getElementById('abbuoni').value = movimento.abbuoni || '';
-        document.getElementById('personaAbbuono').value = movimento.personaAbbuono || '';
-        document.getElementById('uscite').value = movimento.uscite || '';
-        document.getElementById('form-title').textContent = `Modifica Movimento`;
-        document.getElementById('form-buttons').innerHTML = `<button type="submit">Salva Modifiche</button><button type="button" class="button-secondary" onclick="annullaModifica()">Annulla</button>`;
-        aggiornaCampiCondizionali();
-        togglePersonaAbbuono();
-        window.scrollTo(0, 0);
+    } catch (error) {
+        console.error('Errore salvataggio movimento', error);
+        statusIndicator.textContent = 'Errore Salvataggio';
+        statusIndicator.className = 'error';
     }
 
-    function annullaModifica() {
-        document.getElementById('editingIndex').value = "";
-        document.getElementById('editingMovimentoId').value = "";
-        document.getElementById('editingMovimentoData').value = "";
-        document.getElementById('formMovimento').reset();
-        document.getElementById('form-title').textContent = "2. Registrazione Movimento";
-        document.getElementById('form-buttons').innerHTML = `<button type="submit">Aggiungi Movimento</button>`;
-        aggiornaCampiCondizionali();
-        togglePersonaAbbuono();
-    }
+    annullaModifica();
+}
 
-    async function cancellaMovimento(index) {
+function modificaMovimento(index) {
+    const isSimplifiedView = (stato.compagniaSelezionata === 'ARAG' || stato.compagniaSelezionata === 'Helvetia');
+    const movimento = isSimplifiedView
+        ? stato.movimentiVistaMensile[index]
+        : stato.datiGiornoCorrente.movimenti[index];
+
+    document.getElementById('editingIndex').value = index;
+    document.getElementById('editingMovimentoId').value = movimento.movimentoId;
+
+    // Salvo SEMPRE la data originale
+    document.getElementById('editingMovimentoData').value = movimento.dataMovimento || formatDate(stato.dataSelezionata || new Date());
+
+    document.getElementById('metodologia').value = movimento.metodologia;
+    document.getElementById('tipoPosAllianz').value = movimento.tipoPosAllianz || 'POS Direzione';
+    document.getElementById('tipoPosVittoria').value = movimento.tipoPosVittoria || 'POS Direzione';
+    document.getElementById('tipoAnticipo').value = movimento.tipoAnticipo || 'Anticipo Contanti';
+    document.getElementById('rientroMetodo').value = movimento.rientroMetodo || 'Contanti';
+    document.getElementById('numeroAssegno').value = movimento.numeroAssegno || '';
+
+    document.getElementById('nomeCliente').value = movimento.nomeCliente || '';
+    document.getElementById('numeroPolizza').value = movimento.numeroPolizza || '';
+    document.getElementById('importo').value = movimento.importo || '';
+    document.getElementById('provvigioni').value = movimento.provvigioni || '';
+    document.getElementById('arrotondamenti').value = movimento.arrotondamenti || '';
+    document.getElementById('abbuoni').value = movimento.abbuoni || '';
+    document.getElementById('personaAbbuono').value = movimento.personaAbbuono || '';
+    document.getElementById('uscite').value = movimento.uscite || '';
+
+    // Imposta data movimento
+    const dmEl = document.getElementById('dataMovimento');
+    if (dmEl) dmEl.value = movimento.dataMovimento || formatDate(stato.dataSelezionata || new Date());
+
+    document.getElementById('form-title').textContent = 'Modifica Movimento';
+    document.getElementById('form-buttons').innerHTML =
+        `<button type="submit">Salva Modifiche</button>
+         <button type="button" class="button-secondary" onclick="annullaModifica()">Annulla</button>`;
+
+    aggiornaCampiCondizionali();
+    togglePersonaAbbuono();
+    window.scrollTo(0, 0);
+}
+
+function annullaModifica() {
+    document.getElementById('editingIndex').value = '';
+    document.getElementById('editingMovimentoId').value = '';
+    document.getElementById('editingMovimentoData').value = '';
+
+    document.getElementById('formMovimento').reset();
+
+    // Default = data selettore in alto
+    const ds = document.getElementById('date-selector').value;
+    const dmEl = document.getElementById('dataMovimento');
+    if (dmEl) dmEl.value = ds || formatDate(new Date());
+
+    document.getElementById('form-title').textContent = '2. Registrazione Movimento';
+    document.getElementById('form-buttons').innerHTML = `<button type="submit">Aggiungi Movimento</button>`;
+
+    aggiornaCampiCondizionali();
+    togglePersonaAbbuono();
+}
+
+
+async function cancellaMovimento(index) {
         if (!confirm('Sei sicuro di voler eliminare questo movimento?')) return;
         
         const isSimplifiedView = stato.compagniaSelezionata === 'ARAG' || stato.compagniaSelezionata === 'Helvetia';
