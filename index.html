@@ -627,8 +627,7 @@
     </style>
 </head>
 <body id="app-body">
-    <input type="file" id="vecchio-backup-input" accept=".json" style="display: none;">
-
+    
     <div id="auth-container">
         <h2>Gestione Cassa</h2>
         
@@ -675,8 +674,6 @@
         <div class="backup-container">
             <button class="header-backup-button" onclick="esportaBackup()"><i class="fa fa-download"></i> Esporta</button>
             <button class="header-backup-button" onclick="importaBackup()"><i class="fa fa-upload"></i> Importa</button>
-            <button class="header-backup-button" onclick="sincronizzaDatiSecondari()" style="background-color: #17a2b8;"><i class="fas fa-sync-alt"></i> Sincronizza Dati</button>
-            <button class="header-backup-button" onclick="convertiVecchioBackup()" style="background-color: #dc3545;"><i class="fas fa-magic"></i> Converti Backup</button>
         </div>
 
         <div class="modal-wrapper">
@@ -954,7 +951,6 @@
                     <tbody></tbody>
                 </table>
             </div>
-            <!-- NUOVA RIGA PER TOTALE MENSILE -->
             <div class="riepilogo-totali col-totale-mensile">
                 Totale Titoli Incassati nel Mese: € <span id="totaleIncassatoMese">0.00</span>
             </div>
@@ -1710,7 +1706,7 @@ async function cancellaMovimento(index) {
     }
 
     // ===============================================
-    // IMPORT / EXPORT / CONVERSIONE
+    // IMPORT / EXPORT
     // ===============================================
 
     async function esportaBackup() {
@@ -1789,105 +1785,6 @@ async function cancellaMovimento(index) {
             reader.readAsText(file);
         };
         input.click();
-    }
-    
-    function convertiVecchioBackup() {
-        const fileInput = document.getElementById('vecchio-backup-input');
-        fileInput.onchange = e => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = event => {
-                try {
-                    const vecchioBackup = JSON.parse(event.target.result);
-                    const nuovoBackup = {
-                        "giornaliCassa": [],
-                        "promemoria": vecchioBackup.promemoria || [],
-                        "riattivazioni_vittoria": vecchioBackup.riattivazioni_vittoria || [],
-                        "anticipi": [], "abbuoni": [], "bonifici_hdi_arag": [], "pos_hdi_arag": [],
-                        "bonifici_allianz": [], "bonifici_vittoria": []
-                    };
-                    
-                    const compagnie = ['Allianz', 'HDI', 'Vittoria', 'ARAG', 'Helvetia'];
-                    
-                    compagnie.forEach(compagnia => {
-                        const datiDiretti = vecchioBackup[compagnia] || {};
-                        const datiMovimenti = (vecchioBackup.datiMovimenti || {})[compagnia] || {};
-                        const registriGiornalieri = {...datiDiretti, ...datiMovimenti};
-                        
-                        for (const dataKey in registriGiornalieri) {
-                            if (Object.prototype.hasOwnProperty.call(registriGiornalieri, dataKey)) {
-                                const datiGiorno = registriGiornalieri[dataKey];
-                                const docId = `${compagnia}_${dataKey}`;
-                                const dateObj = new Date(dataKey.replace(/-/g, '/'));
-                                
-                                const nuovoDoc = {
-                                    ...datiGiorno,
-                                    id: docId,
-                                    compagnia: compagnia,
-                                    dataKey: dataKey,
-                                    anno: dateObj.getFullYear(),
-                                    mese: dateObj.getMonth()
-                                };
-                                nuovoBackup.giornaliCassa.push(nuovoDoc);
-                            }
-                        }
-                    });
-
-                    const datiJson = JSON.stringify(nuovoBackup, null, 2);
-                    const blob = new Blob([datiJson], { type: 'application/json' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `backup_convertito_per_import.json`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                    
-                    alert("Conversione completata! Il file 'backup_convertito_per_import.json' è stato scaricato.\nOra puoi usare la funzione 'Importa' (in alto a destra) con questo nuovo file.");
-
-                } catch (error) {
-                    console.error("Errore durante la conversione del backup:", error);
-                    alert("Impossibile convertire il file. Potrebbe non essere un backup valido o essere corrotto.");
-                }
-            };
-            reader.readAsText(file);
-        };
-        alert("Seleziona il tuo vecchio file di backup per la conversione.");
-        fileInput.click();
-    }
-    
-    async function sincronizzaDatiSecondari() {
-        if (!confirm("ATTENZIONE: Questa operazione leggerà tutti i movimenti di cassa e rigenererà i dati delle 'Altre Funzioni' (Anticipi, Abbuoni, Bonifici, etc.).\n\nL'operazione è sicura ma potrebbe richiedere alcuni minuti.\n\nContinuare?")) {
-            return;
-        }
-
-        try {
-            alert("Sincronizzazione avviata. Non chiudere la pagina fino al messaggio di completamento.");
-            
-            const giornaliSnapshot = await db.collection('giornaliCassa').get();
-            let totalMovimenti = 0;
-            
-            for (const doc of giornaliSnapshot.docs) {
-                const datiGiorno = doc.data();
-                if (datiGiorno.movimenti && Array.isArray(datiGiorno.movimenti)) {
-                    for (const movimento of datiGiorno.movimenti) {
-                        if (!movimento.movimentoId) {
-                           movimento.movimentoId = `${new Date(datiGiorno.dataKey).getTime()}-${Math.random().toString(36).substring(2, 9)}`;
-                        }
-                        await gestisciMovimentiSecondari(movimento, datiGiorno.dataKey, datiGiorno.compagnia);
-                        totalMovimenti++;
-                    }
-                }
-            }
-            
-            alert(`Sincronizzazione completata con successo!\nSono stati processati ${totalMovimenti} movimenti.`);
-
-        } catch (error) {
-            console.error("Errore durante la sincronizzazione dei dati secondari:", error);
-            alert(`Si è verificato un errore durante la sincronizzazione: ${error.message}`);
-        }
     }
 
 
@@ -2560,8 +2457,16 @@ async function cancellaMovimento(index) {
     function creaCampiConteggio(datiConteggio = {}) {
         const divBanconote = document.getElementById('conteggioBanconote');
         const divMonete = document.getElementById('conteggioMonete');
-        divBanconote.innerHTML = '<h3>Banconote</h3>';
-        divMonete.innerHTML = '<h3>Monete</h3>';
+        
+        // Se è la prima volta (i div sono vuoti), crea la struttura, altrimenti aggiorna solo i valori
+        // Questo è il FIX per evitare che il focus si perda o i campi si resettino mentre scrivi
+        const isFirstRender = divBanconote.innerHTML === '';
+
+        if (isFirstRender) {
+            divBanconote.innerHTML = '<h3>Banconote</h3>';
+            divMonete.innerHTML = '<h3>Monete</h3>';
+        }
+
         [...tagliBanconote, ...tagliMonete].forEach(taglio => {
             const tipo = taglio >= 5 ? 'banconote' : 'monete';
             const div = tipo === 'banconote' ? divBanconote : divMonete;
@@ -2569,19 +2474,33 @@ async function cancellaMovimento(index) {
             const idTaglio = taglio.toString().replace('.', '_');
             const inputId = `input-conteggio-${idTaglio}`;
             
-            const riga = document.createElement('div');
-            riga.className = 'conteggio-riga';
-            riga.innerHTML = `
-                <label for="${inputId}">€ ${taglio.toFixed(2)}</label>
-                <input type="number" id="${inputId}" onblur="aggiornaDatiGiornoCorrente({ conteggioFisico: raccogliDatiConteggio() })" data-valore="${taglio}" data-tipo="${tipo}" value="${valoreSalvato}">
-                <span id="subtotale-${idTaglio}">€ 0.00</span>
-                <button class="btn-reset-single" onclick="azzeraCampoSingolo('${inputId}')" title="Azzera riga">×</button>
-            `;
-            div.appendChild(riga);
+            if (isFirstRender) {
+                // CREAZIONE HTML (Come prima)
+                const riga = document.createElement('div');
+                riga.className = 'conteggio-riga';
+                riga.innerHTML = `
+                    <label for="${inputId}">€ ${taglio.toFixed(2)}</label>
+                    <input type="number" id="${inputId}" onblur="aggiornaDatiGiornoCorrente({ conteggioFisico: raccogliDatiConteggio() })" data-valore="${taglio}" data-tipo="${tipo}" value="${valoreSalvato}">
+                    <span id="subtotale-${idTaglio}">€ 0.00</span>
+                    <button class="btn-reset-single" onclick="azzeraCampoSingolo('${inputId}')" title="Azzera riga">×</button>
+                `;
+                div.appendChild(riga);
+            } else {
+                // AGGIORNAMENTO VALORI ESISTENTI (Senza distruggere il DOM)
+                const input = document.getElementById(inputId);
+                if (input && document.activeElement !== input) {
+                     // Aggiorna solo se l'utente non ci sta scrivendo dentro in questo momento
+                     input.value = valoreSalvato;
+                }
+            }
         });
+
         const divAssegni = document.getElementById('lista-conteggio-assegni');
+        // Gli assegni sono una lista dinamica, qui li ricreiamo sempre perché è più complesso mapparli 1:1, 
+        // ma il problema principale erano i contanti/monete.
         divAssegni.innerHTML = '';
         (datiConteggio?.assegni || []).forEach(importo => aggiungiCampoAssegnoConteggio(importo));
+        
         calcolaConteggioFisico();
     }
     
