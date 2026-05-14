@@ -723,6 +723,10 @@
                         <i class="fas fa-university fa-2x"></i>
                         <span>BONIFICI VITTORIA</span>
                     </button>
+<button class="utility-button" onclick="mostraTabella('pos_vittoria')">
+    <i class="far fa-credit-card fa-2x"></i>
+    <span>POS VITTORIA</span>
+</button>
                      <button class="utility-button" onclick="mostraTabella('riattivazioni_vittoria')">
                         <i class="fas fa-calendar-check fa-2x"></i>
                         <span>RIATTIVAZIONI VITTORIA</span>
@@ -1715,7 +1719,7 @@ async function cancellaMovimento(index) {
         const collectionsToBackup = [
             'giornaliCassa', 'anticipi', 'abbuoni', 'bonifici_hdi_arag',
             'pos_hdi_arag', 'bonifici_allianz', 'bonifici_vittoria',
-            'riattivazioni_vittoria', 'promemoria'
+            'riattivazioni_vittoria', 'promemoria', 'pos_vittoria' 
         ];
 
         try {
@@ -1825,8 +1829,10 @@ async function cancellaMovimento(index) {
             else if (compagnia === 'Vittoria') targetCollection = 'bonifici_vittoria';
         } else if (movimento.metodologia === 'POS') {
             if (compagnia === 'HDI' || compagnia === 'ARAG') targetCollection = 'pos_hdi_arag';
+          else if (compagnia === 'Vittoria' && movimento.tipoPosVittoria === 'POS Agenzia') targetCollection = 'pos_vittoria';
         }
-        const allCollections = ['bonifici_hdi_arag', 'bonifici_allianz', 'bonifici_vittoria', 'pos_hdi_arag'];
+        
+        const allCollections = ['bonifici_hdi_arag', 'bonifici_allianz', 'bonifici_vittoria', 'pos_hdi_arag', 'pos_vittoria'];
         for (const coll of allCollections) {
             if (coll !== targetCollection) {
                 await db.collection(coll).doc(docId).delete().catch(() => {});
@@ -1859,6 +1865,7 @@ async function cancellaMovimento(index) {
         'anticipi': { type: 'anticipi', title: 'Gestione Anticipi', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', tipoAnticipo: 'Tipo Anticipo', anticipoDi: 'Anticipo di', note: 'Note', dataEstinzione: 'Data Estinzione', incassato: 'Incassato' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', tipoAnticipo: 'text', anticipoDi: 'text', note: 'text', dataEstinzione: 'date' }, dataSource: 'anticipi', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['anticipoDi', 'note', 'dataEstinzione', 'incassato'] },
         'abbuoni': { type: 'abbuoni', title: 'Gestione Abbuoni', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', abbuoni: 'Importo Abbuono (€)', personaAbbuono: 'Effettuato da', note: 'Note', abbuonoRegolato: 'Regolato' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', abbuoni: 'number', personaAbbuono: 'text', note: 'text' }, dataSource: 'abbuoni', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['note', 'abbuonoRegolato'] },
         'bonifici_hdi_arag': { type: 'bonifici_hdi_arag', title: 'Gestione Bonifici (HDI/ARAG)', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', note: 'Note' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', note: 'text' }, dataSource: 'bonifici_hdi_arag', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['note'] },
+'pos_vittoria': { type: 'pos_vittoria', title: 'Gestione POS Agenzia (Vittoria)', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', note: 'Note', dataEstinzione: 'Data Estinzione', incassato: 'Incassato' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', note: 'text', dataEstinzione: 'date' }, dataSource: 'pos_vittoria', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['note', 'dataEstinzione', 'incassato'] },
         'pos_hdi_arag': { type: 'pos_hdi_arag', title: 'Gestione POS (HDI/ARAG)', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', note: 'Note', dataEstinzione: 'Data Estinzione', incassato: 'Incassato' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', note: 'text', dataEstinzione: 'date' }, dataSource: 'pos_hdi_arag', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['note', 'dataEstinzione', 'incassato'] },
         'bonifici_allianz': { type: 'bonifici_allianz', title: 'Gestione Bonifici (Allianz)', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', note: 'Note' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', note: 'text' }, dataSource: 'bonifici_allianz', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['note'] },
         'bonifici_vittoria': { type: 'bonifici_vittoria', title: 'Gestione Bonifici (Vittoria)', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', note: 'Note' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', note: 'text' }, dataSource: 'bonifici_vittoria', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['note'] },
@@ -1878,7 +1885,7 @@ async function cancellaMovimento(index) {
             query = query.where('compagnia', 'in', ['HDI', 'ARAG']);
         } else if (tipo === 'bonifici_allianz') {
             query = query.where('compagnia', '==', 'Allianz');
-        } else if (tipo === 'bonifici_vittoria') {
+        } else if (tipo === 'bonifici_vittoria' || tipo === 'pos_vittoria') {
             query = query.where('compagnia', '==', 'Vittoria');
         }
         
