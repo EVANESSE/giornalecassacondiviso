@@ -3016,10 +3016,19 @@ function apriImpostazioniUtente() {
         btn.style.border = icona === iconaSelezionata ? '2px solid #007bff' : '1px solid #ccc';
         btn.style.color = '#333';
         btn.style.boxShadow = 'none';
+        btn.style.borderRadius = '8px'; // Aggiunto per renderlo più coerente
         
         btn.onclick = () => {
             iconaSelezionata = icona;
-            apriImpostazioniUtente(); // Ridisegna per mostrare la selezione
+            
+            // FIX: Invece di ricaricare tutta la modale perdendo i dati,
+            // aggiorniamo solo i bordi/sfondi dei bottoni per mostrare la selezione
+            Array.from(grid.children).forEach(child => {
+                child.style.background = 'white';
+                child.style.border = '1px solid #ccc';
+            });
+            btn.style.background = 'rgba(0, 123, 255, 0.2)';
+            btn.style.border = '2px solid #007bff';
         };
         grid.appendChild(btn);
     });
