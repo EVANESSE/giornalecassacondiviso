@@ -3030,10 +3030,11 @@ function apriImpostazioniUtente() {
 async function salvaImpostazioniUtente() {
     const colore = document.getElementById('user-icon-color').value;
     try {
-        await db.collection('users').doc(stato.datiUtente.uid).update({
+        // Sostituito .update() con .set(..., { merge: true })
+        await db.collection('users').doc(stato.datiUtente.uid).set({
             iconClass: iconaSelezionata,
             iconColor: colore
-        });
+        }, { merge: true });
         
         stato.datiUtente.iconClass = iconaSelezionata;
         stato.datiUtente.iconColor = colore;
