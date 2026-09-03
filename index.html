@@ -1827,7 +1827,7 @@ async function cancellaMovimento(index) {
             if (compagnia === 'HDI' || compagnia === 'ARAG') targetCollection = 'bonifici_hdi_arag';
             else if (compagnia === 'Allianz') targetCollection = 'bonifici_allianz';
             else if (compagnia === 'Vittoria') targetCollection = 'bonifici_vittoria';
-        } else if (movimento.metodologia === 'POS') {
+        } else if (movimento.metodologia === 'POS' || (movimento.metodologia === 'Rientro da Anticipo' && movimento.rientroMetodo === 'POS')) {
             if (compagnia === 'HDI' || compagnia === 'ARAG') targetCollection = 'pos_hdi_arag';
           else if (compagnia === 'Vittoria' && movimento.tipoPosVittoria === 'POS Agenzia') targetCollection = 'pos_vittoria';
         }
