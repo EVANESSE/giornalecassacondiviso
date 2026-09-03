@@ -1007,6 +1007,16 @@
     
     const db = firebase.firestore();
     const auth = firebase.auth();
+    // --- ABILITAZIONE PERSISTENZA OFFLINE PER EVITARE BLOCCHI ---
+    db.enablePersistence({ synchronizeTabs: true })
+      .catch(function(err) {
+          if (err.code == 'failed-precondition') {
+              console.warn("Attenzione: Più schede aperte con la stessa app. La persistenza funziona solo su una.");
+          } else if (err.code == 'unimplemented') {
+              console.warn("Il browser corrente non supporta la persistenza offline.");
+          }
+      });
+    // -------------------------------------------------------------
     const statusIndicator = document.getElementById('status-indicator');
 
     let stato = {
