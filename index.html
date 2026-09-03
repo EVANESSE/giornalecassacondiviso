@@ -815,7 +815,8 @@
             <label for="riportoIniziale"><strong>Riporto da Cassa Teorica Giorno Precedente (€):</strong></label>
             <input type="number" id="riportoIniziale" placeholder="0.00" step="0.01" onchange="aggiornaDatiGiornoCorrente({ riportoIniziale: parseFloat(this.value) || 0 })">
         </div>
-    
+
+        <div id="main-notification" class="save-notification" style="width: 50%; margin-bottom: 15px;"></div>
         <div class="grid-container">
             <fieldset id="form-movimento-fieldset">
                 <div class="box">
@@ -863,6 +864,13 @@
                                     <option value="Sospeso Cassa">Sospeso Cassa</option>
                                 </select>
                             </div>
+
+                            <div id="divSelezioneAnticipoAperto" style="display:none;">
+                                <label for="selezioneAnticipoAperto" style="color: #007bff;"><i class="fas fa-magic"></i> Seleziona Anticipo da Chiudere (Opzionale):</label>
+                                <select id="selezioneAnticipoAperto" onchange="autoCompilaDaAnticipo()" style="border-color: #007bff; background-color: #f8f9fa;">
+                                    <option value="">-- Seleziona --</option>
+                                </select>
+                            </div>
                     
                             <div id="divRientroMetodo" style="display:none;">
                                 <label for="rientroMetodo">Metodo di Rientro:</label>
@@ -871,6 +879,7 @@
                                     <option value="POS">POS</option><option value="Bonifico">Bonifico</option>
                                 </select>
                             </div>
+                            
                             <div id="divNumeroAssegno" style="display:none;">
                                 <label for="numeroAssegno">Numero Assegno:</label>
                                 <input type="text" id="numeroAssegno" placeholder="N° Assegno">
@@ -1419,8 +1428,8 @@
     } else if (metodologia === 'Incasso Multiplo') {
         const common = {
             ...baseMovimento,
-            nomeCliente: document.getElementById('nomeCliente').value,
-            numeroPolizza: document.getElementById('numeroPolizza').value,
+            nomeCliente: document.getElementById('nomeCliente').value.trim(),
+            numeroPolizza: document.getElementById('numeroPolizza').value.trim().toUpperCase(),
             provvigioni: parseFloat(document.getElementById('provvigioni').value) || 0,
             arrotondamenti: parseFloat(document.getElementById('arrotondamenti').value) || 0,
             abbuoni: parseFloat(document.getElementById('abbuoni').value) || 0,
@@ -1458,8 +1467,8 @@
     } else {
         nuoviMovimenti.push({
             ...baseMovimento,
-            nomeCliente: document.getElementById('nomeCliente').value,
-            numeroPolizza: document.getElementById('numeroPolizza').value,
+            nomeCliente: document.getElementById('nomeCliente').value.trim(),
+            numeroPolizza: document.getElementById('numeroPolizza').value.trim().toUpperCase(),
             importo: parseFloat(document.getElementById('importo').value) || 0,
             provvigioni: parseFloat(document.getElementById('provvigioni').value) || 0,
             arrotondamenti: parseFloat(document.getElementById('arrotondamenti').value) || 0,
@@ -1810,11 +1819,37 @@ async function cancellaMovimento(index) {
             lastModifiedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
 
-        if (movimento.metodologia === 'Anticipo') {
-            await db.collection('anticipi').doc(docId).set({ ...baseData, importo: movimento.importo, tipoAnticipo: movimento.tipoAnticipo, anticipoDi: '', note: '' }, { merge: true });
-        } else {
-            await db.collection('anticipi').doc(docId).delete().catch(() => {});
+        // --- INIZIO NUOVO CODICE: CHIUSURA AUTOMATICA ANTICIPO ---
+        if (movimento.metodologia === 'Rientro da Anticipo' && movimento.numeroPolizza && movimento.numeroPolizza.trim() !== '') {
+            try {
+                // Assicura che la polizza sia pulita e in maiuscolo per la ricerca
+                const polizzaCercata = movimento.numeroPolizza.trim().toUpperCase();
+                
+                const anticipiSnapshot = await db.collection('anticipi')
+                    .where('compagnia', '==', compagnia)
+                    .where('numeroPolizza', '==', polizzaCercata)
+                    .get();
+
+                anticipiSnapshot.forEach(async (docSnap) => {
+                    const datiAnticipo = docSnap.data();
+                    
+                    // Se trova l'anticipo e non è ancora stato incassato
+                    if (!datiAnticipo.incassato) {
+                        await db.collection('anticipi').doc(docSnap.id).update({
+                            incassato: true,
+                            dataEstinzione: dataKey,
+                            lastModifiedBy: stato.datiUtente?.displayName || 'Sistema',
+                            lastModifiedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        // Mostra notifica di successo a schermo
+                        mostraNotificaMain(`✔ Anticipo chiuso in automatico per polizza ${polizzaCercata}`, 'success');
+                    }
+                });
+            } catch (error) {
+                console.error("Errore durante la chiusura automatica dell'anticipo: ", error);
+            }
         }
+        // --- FINE NUOVO CODICE ---
 
         if ((movimento.abbuoni || 0) > 0) {
             await db.collection('abbuoni').doc(docId).set({ ...baseData, abbuoni: movimento.abbuoni, personaAbbuono: movimento.personaAbbuono, note: '' }, { merge: true });
@@ -2245,8 +2280,14 @@ async function cancellaMovimento(index) {
             const compagnia = stato.compagniaSelezionata;
             const rientroMetodo = document.getElementById('rientroMetodo').value;
             const tipoAnticipo = document.getElementById('tipoAnticipo').value;
-            const showProvvigioni = (compagnia === 'HDI' || compagnia === 'Vittoria') && metodologia !== 'Rientro da Anticipo';
-            const showRientro = metodologia === 'Rientro da Anticipo';
+            
+            const showRientro = metodologia === 'Rientro da Anticipo'; // <-- ECCO LA RIGA CHE MANCAVA!
+            const showProvvigioni = (compagnia === 'HDI' || compagnia === 'Vittoria') && !showRientro;
+            
+            const elSelezioneAnticipo = document.getElementById('divSelezioneAnticipoAperto');
+            if (elSelezioneAnticipo) elSelezioneAnticipo.style.display = showRientro ? 'block' : 'none';
+            if (showRientro && typeof caricaAnticipiAperti === 'function') caricaAnticipiAperti();
+
             const showAssegno = metodologia === 'Assegno' || (showRientro && rientroMetodo === 'Assegno') || (metodologia === 'Anticipo' && tipoAnticipo === 'Anticipo Assegno');
             const showTipoAnticipo = metodologia === 'Anticipo';
             const showTipoPosAllianz = metodologia === 'POS' && compagnia === 'Allianz';
@@ -2749,6 +2790,58 @@ async function cancellaMovimento(index) {
         risultatiContainer.innerHTML = 'Errore nella ricerca. ' + e;
       });
   }
+let anticipiApertiCorrenti = [];
+
+async function caricaAnticipiAperti() {
+    const select = document.getElementById('selezioneAnticipoAperto');
+    select.innerHTML = '<option value="">-- Caricamento in corso... --</option>';
+    try {
+        const snapshot = await db.collection('anticipi')
+            .where('compagnia', '==', stato.compagniaSelezionata)
+            .get();
+
+        anticipiApertiCorrenti = [];
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            // Filtra in JS per evitare problemi con indici mancanti
+            if (!data.incassato) {
+                anticipiApertiCorrenti.push({ id: doc.id, ...data });
+            }
+        });
+
+        select.innerHTML = '<option value="">-- Seleziona (Auto-compila) --</option>';
+        if (anticipiApertiCorrenti.length === 0) {
+            select.innerHTML += '<option value="" disabled>Nessun anticipo aperto trovato</option>';
+        } else {
+            // Ordina dal più vecchio al più recente
+            anticipiApertiCorrenti.sort((a, b) => new Date(a.dataKey) - new Date(b.dataKey));
+            anticipiApertiCorrenti.forEach(ant => {
+                const dataFormat = ant.dataKey ? new Date(ant.dataKey.replace(/-/g, '/')).toLocaleDateString('it-IT') : '';
+                select.innerHTML += `<option value="${ant.id}">${dataFormat} - ${ant.nomeCliente} (Pol: ${ant.numeroPolizza || 'N/D'}) - €${ant.importo}</option>`;
+            });
+        }
+    } catch (error) {
+        console.error("Errore caricamento anticipi", error);
+        select.innerHTML = '<option value="">-- Errore caricamento --</option>';
+    }
+}
+
+function autoCompilaDaAnticipo() {
+    const select = document.getElementById('selezioneAnticipoAperto');
+    const selectedId = select.value;
+    if (!selectedId) return;
+
+    const anticipo = anticipiApertiCorrenti.find(a => a.id === selectedId);
+    if (anticipo) {
+        document.getElementById('nomeCliente').value = anticipo.nomeCliente || '';
+        document.getElementById('numeroPolizza').value = anticipo.numeroPolizza || '';
+        document.getElementById('importo').value = anticipo.importo || '';
+    }
+}
+
+function mostraNotificaMain(message, type) {
+    mostraNotificaTemporanea('main-notification', message, type);
+}
 </script>
 </body>
 </html>
