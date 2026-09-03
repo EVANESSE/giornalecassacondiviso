@@ -27,6 +27,53 @@
         body.theme-vittoria { --primary-color: #6f42c1; --primary-color-light: #e2d9f3; --primary-rgb: 111, 66, 193; }
         body.theme-arag { --primary-color: #ffc107; --primary-color-light: #fff3cd; --primary-rgb: 255, 193, 7; }
         body.theme-helvetia { --primary-color: #dc3545; --primary-color-light: #f8d7da; --primary-rgb: 220, 53, 69; }
+/* 7. SCHERMATA DI ACCESSO PREMIUM E LOGO */
+#auth-container {
+    max-width: 420px;
+    margin: 8vh auto !important;
+    padding: 40px 30px !important;
+    background: #ffffff !important;
+    border-radius: 24px !important;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.03) !important;
+    border: 1px solid rgba(0,0,0,0.04) !important;
+}
+#auth-container h2 {
+    font-size: 1.8rem;
+    color: #1a1a1a;
+    margin-bottom: 30px;
+}
+#auth-container input {
+    background-color: #f8f9fa;
+    border: 1px solid #e1e5eb !important;
+    border-radius: 12px !important;
+    padding: 14px !important;
+    font-size: 1rem;
+}
+#auth-container button {
+    background: linear-gradient(135deg, #007bff, #0056b3) !important;
+    border-radius: 12px !important;
+    padding: 14px !important;
+    font-size: 1.1rem;
+    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.25) !important;
+    margin-top: 10px;
+}
+#auth-container button:hover {
+    box-shadow: 0 6px 20px rgba(0, 123, 255, 0.35) !important;
+    transform: translateY(-2px);
+}
+.auth-logo-wrapper {
+    text-align: center;
+    margin-bottom: 15px;
+}
+.auth-logo-wrapper img {
+    width: 100px;
+    height: 100px;
+    object-fit: contain;
+    border-radius: 20px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.06);
+    padding: 5px;
+    background: white;
+}
 /* 1. FONT MODERNO */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 body { font-family: 'Inter', sans-serif; }
@@ -682,7 +729,12 @@ tbody tr:hover { background-color: rgba(0,0,0,0.02); }
 <body id="app-body">
     
     <div id="auth-container">
-        <h2>Gestione Cassa</h2>
+        <!-- AGGIUNTA LOGO -->
+        <div class="auth-logo-wrapper">
+            <img src="icon-192x192.png" alt="Logo Agenzia">
+        </div>
+        <h2 style="margin-top: 0;">Gestione Cassa</h2>
+        <!-- FINE AGGIUNTA LOGO -->
         
         <div id="login-form" class="auth-form active">
             <h3>Accedi</h3>
@@ -720,9 +772,15 @@ tbody tr:hover { background-color: rgba(0,0,0,0.02); }
     <div class="modal-overlay" id="company-selector-modal" style="display: none;">
         <div class="modal-overlay-background"></div>
         
-        <div class="logout-container">
-            <button class="header-backup-button logout-button" onclick="logoutUser()">Logout</button>
-        </div>
+        <div class="logout-container" style="display: flex; flex-direction: column; gap: 10px; align-items: flex-start;">
+         <div style="display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.9); padding: 5px 12px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+             <div id="user-info" style="font-weight: bold; color: #333; display: flex; align-items: center; gap: 10px;"></div>
+             <button onclick="apriImpostazioniUtente()" style="background: none; border: none; padding: 0; color: #6c757d; cursor: pointer; width: auto; margin: 0; box-shadow: none; font-size: 1.2rem;" title="Personalizza Utente">
+                 <i class="fas fa-cog"></i>
+             </button>
+         </div>
+         <button class="header-backup-button logout-button" onclick="logoutUser()">Logout</button>
+     </div>
 
         <div class="backup-container">
             <button class="header-backup-button" onclick="esportaBackup()"><i class="fa fa-download"></i> Esporta</button>
@@ -848,7 +906,6 @@ tbody tr:hover { background-color: rgba(0,0,0,0.02); }
                 <input type="date" id="date-selector" onchange="caricaGiornale(this.valueAsDate)">
             </div>
             <div class="header-group">
-                <div id="user-info"></div>
                 <div id="status-indicator"></div>
                 <button onclick="stampaPersonalizzata()" class="button-secondary">Stampa</button>
                 <button id="btn-festa" class="button-secondary" style="display: none;">Festa/Chiusura</button>
@@ -1042,6 +1099,24 @@ tbody tr:hover { background-color: rgba(0,0,0,0.02); }
         </div>
     </div>
     
+    <div class="modal-overlay" id="user-settings-modal" style="display:none; z-index: 2001;">
+        <div class="modal-content fixed-color-scheme" style="width: 90%; max-width: 450px;">
+            <h2 style="margin-top:0;">Personalizza Utente</h2>
+            
+            <label style="font-weight: bold;">Scegli il Colore:</label>
+            <input type="color" id="user-icon-color" value="#007bff" style="height: 50px; cursor: pointer; padding: 0; border: none; border-radius: 8px; width: 100%; margin-bottom: 20px;">
+            
+            <label style="font-weight: bold;">Scegli l'Icona:</label>
+            <div id="icon-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(45px, 1fr)); gap: 10px; margin-top: 10px; max-height: 250px; overflow-y: auto; padding: 15px; border: 1px solid #e0e0e0; border-radius: 8px; background: #f8f9fa;">
+                <!-- Le icone verranno generate qui -->
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 25px; width: 100%;">
+                <button class="button-save" onclick="salvaImpostazioniUtente()" style="width: 50%;">Salva</button>
+                <button class="button-secondary" onclick="document.getElementById('user-settings-modal').style.display='none'" style="width: 50%;">Annulla</button>
+            </div>
+        </div>
+    </div>
     <div id="print-layout"></div>
 
 <script>
@@ -1097,12 +1172,14 @@ tbody tr:hover { background-color: rgba(0,0,0,0.02); }
             stato.datiUtente = {
                 uid: user.uid,
                 email: user.email,
-                displayName: userDoc.exists ? userDoc.data().displayName : user.email.split('@')[0]
+                displayName: userDoc.exists ? userDoc.data().displayName : user.email.split('@')[0],
+                iconClass: (userDoc.exists && userDoc.data().iconClass) ? userDoc.data().iconClass : 'fas fa-user',
+                iconColor: (userDoc.exists && userDoc.data().iconColor) ? userDoc.data().iconColor : '#333333'
             };
             
             document.getElementById('auth-container').style.display = 'none';
             document.getElementById('company-selector-modal').style.display = 'flex';
-            document.getElementById('user-info').textContent = `Utente: ${stato.datiUtente.displayName}`;
+            aggiornaUIUtente(); // Richiama la nuova grafica dell'utente
             setupAlertListeners();
         } else {
             stato.datiUtente = null;
@@ -2905,6 +2982,78 @@ function autoCompilaDaAnticipo() {
 function mostraNotificaMain(message, type) {
     mostraNotificaTemporanea('main-notification', message, type);
 }
+// --- LOGICA PERSONALIZZAZIONE UTENTE ---
+const iconeUtente = [
+    'fas fa-user', 'fas fa-user-ninja', 'fas fa-user-astronaut', 'fas fa-user-secret', 'fas fa-user-tie',
+    'fas fa-cat', 'fas fa-dog', 'fas fa-dragon', 'fas fa-ghost', 'fas fa-robot', 
+    'fas fa-bolt', 'fas fa-star', 'fas fa-heart', 'fas fa-fire', 'fas fa-leaf', 
+    'fas fa-gem', 'fas fa-crown', 'fas fa-paper-plane', 'fas fa-rocket', 'fas fa-moon', 
+    'fas fa-sun', 'fas fa-anchor', 'fas fa-bicycle', 'fas fa-car', 'fas fa-plane', 
+    'fas fa-ship', 'fas fa-coffee', 'fas fa-gamepad', 'fas fa-music', 'fas fa-camera', 
+    'fas fa-book', 'fas fa-glasses', 'fas fa-hat-wizard', 'fas fa-chess-knight', 'fas fa-bug', 
+    'fas fa-paw', 'fas fa-feather', 'fas fa-key', 'fas fa-shield-alt', 'fas fa-trophy', 
+    'fas fa-medal', 'fas fa-meteor', 'fas fa-snowflake', 'fas fa-tree', 'fas fa-apple-alt', 
+    'fas fa-cookie', 'fas fa-pizza-slice', 'fas fa-hamburger', 'fas fa-ice-cream', 'fas fa-lemon'
+];
+
+let iconaSelezionata = 'fas fa-user';
+
+function apriImpostazioniUtente() {
+    const grid = document.getElementById('icon-grid');
+    grid.innerHTML = '';
+    
+    // Imposta valori attuali
+    document.getElementById('user-icon-color').value = stato.datiUtente.iconColor || '#333333';
+    iconaSelezionata = stato.datiUtente.iconClass || 'fas fa-user';
+
+    iconeUtente.forEach(icona => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.innerHTML = `<i class="${icona} fa-lg"></i>`;
+        btn.style.padding = '10px';
+        btn.style.margin = '0';
+        btn.style.background = icona === iconaSelezionata ? 'rgba(0, 123, 255, 0.2)' : 'white';
+        btn.style.border = icona === iconaSelezionata ? '2px solid #007bff' : '1px solid #ccc';
+        btn.style.color = '#333';
+        btn.style.boxShadow = 'none';
+        
+        btn.onclick = () => {
+            iconaSelezionata = icona;
+            apriImpostazioniUtente(); // Ridisegna per mostrare la selezione
+        };
+        grid.appendChild(btn);
+    });
+
+    document.getElementById('user-settings-modal').style.display = 'flex';
+}
+
+async function salvaImpostazioniUtente() {
+    const colore = document.getElementById('user-icon-color').value;
+    try {
+        await db.collection('users').doc(stato.datiUtente.uid).update({
+            iconClass: iconaSelezionata,
+            iconColor: colore
+        });
+        
+        stato.datiUtente.iconClass = iconaSelezionata;
+        stato.datiUtente.iconColor = colore;
+        aggiornaUIUtente();
+        
+        document.getElementById('user-settings-modal').style.display = 'none';
+    } catch (error) {
+        alert("Errore durante il salvataggio: " + error.message);
+    }
+}
+
+function aggiornaUIUtente() {
+    const userInfoEl = document.getElementById('user-info');
+    if (userInfoEl && stato.datiUtente) {
+        const icona = stato.datiUtente.iconClass || 'fas fa-user';
+        const colore = stato.datiUtente.iconColor || '#333333';
+        userInfoEl.innerHTML = `<i class="${icona}" style="color: ${colore}; font-size: 1.4rem;"></i> <span>${stato.datiUtente.displayName}</span>`;
+    }
+}
+// ------------------------------------------
 </script>
 </body>
 </html>
