@@ -1997,6 +1997,31 @@ async function cancellaMovimento(index) {
             await db.collection('abbuoni').doc(docId).delete().catch(() => {});
         }
 
+// Sincronizzazione Anticipi Migliorata
+        const anticipoRef = db.collection('anticipi').doc(docId);
+        
+        if (movimento.metodologia === 'Anticipo') {
+            const anticipoEsistente = await anticipoRef.get();
+            
+            let datiDaSalvare = {
+                ...baseData,
+                importo: movimento.importo,
+                tipoAnticipo: movimento.tipoAnticipo || 'Non specificato'
+            };
+            
+            // Se l'anticipo è nuovo, creiamo i campi vuoti.
+            // Se esiste già, NON tocchiamo note e spunte per non perderle!
+            if (!anticipoEsistente.exists) {
+                datiDaSalvare.anticipoDi = '';
+                datiDaSalvare.note = '';
+                datiDaSalvare.incassato = false;
+            }
+            
+            await anticipoRef.set(datiDaSalvare, { merge: true });
+        } else {
+            // Se hai trasformato un Anticipo in Contanti/Assegno, lo toglie in automatico dalla lista Anticipi
+            await anticipoRef.delete().catch(() => {});
+        }
         let targetCollection = null;
         if (movimento.metodologia === 'Bonifico') {
             if (compagnia === 'HDI' || compagnia === 'ARAG') targetCollection = 'bonifici_hdi_arag';
@@ -2021,7 +2046,7 @@ async function cancellaMovimento(index) {
     async function rimuoviMovimentiSecondari(movimento) {
         if (!movimento || !movimento.movimentoId) return;
         const docId = movimento.movimentoId;
-        const collections = ['anticipi', 'abbuoni', 'bonifici_hdi_arag', 'pos_hdi_arag', 'bonifici_allianz', 'bonifici_vittoria'];
+        const collections = ['abbuoni', 'bonifici_hdi_arag', 'pos_hdi_arag', 'bonifici_allianz', 'bonifici_vittoria'];
         for (const coll of collections) {
             try {
                 await db.collection(coll).doc(docId).delete();
