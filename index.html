@@ -1156,6 +1156,7 @@ tbody tr:hover { background-color: rgba(0,0,0,0.02); }
     };
     
     let unsubscribeGiornale = null;
+    let caricamentoGiornaleToken = 0; // invalida i caricamenti appartenenti a selezioni precedenti
     let unsubscribeAlerts = {};
     let unsubscribeGenericTable = null;
 
@@ -1355,7 +1356,9 @@ tbody tr:hover { background-color: rgba(0,0,0,0.02); }
     function tornaAllaSelezioneCompagnia() {
         document.getElementById('main-container').style.display = 'none';
         document.getElementById('company-selector-modal').style.display = 'flex';
+        caricamentoGiornaleToken++;
         if (unsubscribeGiornale) unsubscribeGiornale();
+        unsubscribeGiornale = null;
         stato.compagniaSelezionata = null;
         stato.datiGiornoCorrente = null;
         stato.movimentiVistaMensile = [];
@@ -1364,71 +1367,96 @@ tbody tr:hover { background-color: rgba(0,0,0,0.02); }
 
     function caricaGiornale(data) {
         if (!data || !stato.compagniaSelezionata) return;
-        stato.dataSelezionata = data;
-    const dmEl = document.getElementById('dataMovimento');
-    if (dmEl) dmEl.value = formatDate(data);
-        
-        if (unsubscribeGiornale) unsubscribeGiornale();
+        const compagniaCaricata = stato.compagniaSelezionata;
+        const dataCaricata = new Date(data.getTime());
+        const dataKey = formatDate(dataCaricata);
+        const token = ++caricamentoGiornaleToken;
+        stato.dataSelezionata = dataCaricata;
+        const dmEl = document.getElementById('dataMovimento');
+        if (dmEl) dmEl.value = dataKey;
 
-        const isSimplifiedView = stato.compagniaSelezionata === 'ARAG' || stato.compagniaSelezionata === 'Helvetia';
-        
+        if (unsubscribeGiornale) unsubscribeGiornale();
+        unsubscribeGiornale = null;
+
+        const isSimplifiedView = compagniaCaricata === 'ARAG' || compagniaCaricata === 'Helvetia';
         if (isSimplifiedView) {
+            stato.datiGiornoCorrente = null;
             stato.movimentiVistaMensile = [];
-            const selectedMonth = data.getMonth();
-            const selectedYear = data.getFullYear();
-            
+            const selectedMonth = dataCaricata.getMonth();
+            const selectedYear = dataCaricata.getFullYear();
             unsubscribeGiornale = db.collection('giornaliCassa')
-                .where('compagnia', '==', stato.compagniaSelezionata)
+                .where('compagnia', '==', compagniaCaricata)
                 .where('anno', '==', selectedYear)
                 .where('mese', '==', selectedMonth)
                 .onSnapshot(snapshot => {
-                    let movimentiDaMostrare = [];
+                    if (token !== caricamentoGiornaleToken || stato.compagniaSelezionata !== compagniaCaricata) return;
+                    const movimentiDaMostrare = [];
                     snapshot.forEach(doc => {
-                        const movimentiDelGiorno = doc.data().movimenti || [];
-                        movimentiDelGiorno.forEach((m, index) => {
-                            m.dataMovimento = doc.data().dataKey;
-                            m.originalIndex = index;
-                            movimentiDaMostrare.push(m);
+                        const datiDoc = doc.data();
+                        (datiDoc.movimenti || []).forEach((m, index) => {
+                            movimentiDaMostrare.push({ ...m, dataMovimento: datiDoc.dataKey, originalIndex: index });
                         });
                     });
-                    movimentiDaMostrare.sort((a, b) => new Date(b.dataMovimento) - new Date(a.dataMovimento));
+                    movimentiDaMostrare.sort((a,b) => new Date(b.dataMovimento) - new Date(a.dataMovimento));
                     stato.movimentiVistaMensile = movimentiDaMostrare;
-                    aggiornaTabellaMovimenti(stato.movimentiVistaMensile);
+                    aggiornaTabellaMovimenti(movimentiDaMostrare);
                     aggiornaTuttiRiepiloghi();
                     annullaModifica();
-                }, error => console.error("Errore vista semplificata:", error));
-
+                }, error => {
+                    if (token === caricamentoGiornaleToken) console.error("Errore vista semplificata:", error);
+                });
         } else {
             stato.datiGiornoCorrente = null;
-            const dataKey = formatDate(data);
-            const docId = `${stato.compagniaSelezionata}_${dataKey}`;
-            
+            const conteggioFieldset = document.getElementById('box-conteggio-cassa-fieldset');
+            if (conteggioFieldset) conteggioFieldset.disabled = true;
+            document.querySelectorAll('#conteggioBanconote input, #conteggioMonete input, .conteggio-assegno').forEach(input => {
+                input.value = '';
+            });
+            document.getElementById('lista-conteggio-assegni').innerHTML = '';
+            calcolaConteggioFisico();
+            const docId = `${compagniaCaricata}_${dataKey}`;
             unsubscribeGiornale = db.collection('giornaliCassa').doc(docId).onSnapshot(async doc => {
+                if (token !== caricamentoGiornaleToken || stato.compagniaSelezionata !== compagniaCaricata ||
+                    !stato.dataSelezionata || formatDate(stato.dataSelezionata) !== dataKey) return;
                 statusIndicator.textContent = 'Sincronizzato';
                 statusIndicator.className = 'synced';
-                
-                if (doc.exists) {
-                    stato.datiGiornoCorrente = doc.data();
-                    if (!stato.datiGiornoCorrente.riportoIsManual) {
-                        const riportoCorretto = await calcolaRiporto(stato.dataSelezionata);
-                        if (Math.abs(riportoCorretto - (stato.datiGiornoCorrente.riportoIniziale || 0)) > 0.01) {
-                            await aggiornaDatiGiornoCorrente({ riportoIniziale: riportoCorretto });
-                            return;
+                try {
+                    let datiGiorno;
+                    if (doc.exists) {
+                        datiGiorno = doc.data();
+                        if (!datiGiorno.riportoIsManual) {
+                            const riporto = await calcolaRiporto(dataCaricata, compagniaCaricata);
+                            if (token !== caricamentoGiornaleToken || stato.compagniaSelezionata !== compagniaCaricata ||
+                                !stato.dataSelezionata || formatDate(stato.dataSelezionata) !== dataKey) return;
+                            if (Math.abs(riporto - (datiGiorno.riportoIniziale || 0)) > 0.01) {
+                                await aggiornaDatiGiornoCorrente({riportoIniziale:riporto}, null, compagniaCaricata, dataCaricata);
+                                return;
+                            }
                         }
+                    } else {
+                        const riporto = await calcolaRiporto(dataCaricata, compagniaCaricata);
+                        if (token !== caricamentoGiornaleToken || stato.compagniaSelezionata !== compagniaCaricata ||
+                            !stato.dataSelezionata || formatDate(stato.dataSelezionata) !== dataKey) return;
+                        datiGiorno = creaNuovoGiorno(dataCaricata, riporto, compagniaCaricata);
                     }
-                } else {
-                    const riporto = await calcolaRiporto(data);
-                    stato.datiGiornoCorrente = creaNuovoGiorno(data, riporto);
+                    if (token !== caricamentoGiornaleToken) return;
+                    stato.datiGiornoCorrente = datiGiorno;
+                    renderGiornale(datiGiorno);
+                } catch (error) {
+                    if (token !== caricamentoGiornaleToken) return;
+                    console.error("Errore caricamento giornale:", error);
+                    statusIndicator.textContent = 'Errore Caricamento';
+                    statusIndicator.className = 'error';
                 }
-                renderGiornale(stato.datiGiornoCorrente);
             }, error => {
-                console.error("Errore nel listener del giornale: ", error);
+                if (token !== caricamentoGiornaleToken) return;
+                console.error("Errore nel listener del giornale:", error);
                 statusIndicator.textContent = 'Errore Connessione';
                 statusIndicator.className = 'error';
             });
         }
     }
-    
+
     function renderGiornale(datiGiorno) {
         const inputRiporto = document.getElementById('riportoIniziale');
         const toggle = document.getElementById('riporto-mode-toggle');
@@ -1446,6 +1474,7 @@ tbody tr:hover { background-color: rgba(0,0,0,0.02); }
         inputRiporto.value = (datiGiorno.riportoIniziale || 0).toFixed(2);
         
         creaCampiConteggio(datiGiorno.conteggioFisico);
+        impostaContestoCampiConteggio(datiGiorno.compagnia || stato.compagniaSelezionata, datiGiorno.dataKey || formatDate(stato.dataSelezionata));
         const divRisultato = document.getElementById('risultatoVerifica');
         if (datiGiorno.verificaResult) {
             divRisultato.textContent = datiGiorno.verificaResult.text;
@@ -1460,7 +1489,7 @@ tbody tr:hover { background-color: rgba(0,0,0,0.02); }
         aggiornaTuttiRiepiloghi();
     }
     
-    function creaNuovoGiorno(data, riporto) {
+    function creaNuovoGiorno(data, riporto, compagnia = stato.compagniaSelezionata) {
         const dataKey = formatDate(data);
         return {
             riportoIniziale: riporto,
@@ -1468,45 +1497,49 @@ tbody tr:hover { background-color: rgba(0,0,0,0.02); }
             conteggioFisico: {},
             cassaTeorica: riporto,
             dataKey: dataKey,
-            compagnia: stato.compagniaSelezionata,
+            compagnia: compagnia,
             anno: data.getFullYear(),
             mese: data.getMonth()
         };
     }
     
-    async function aggiornaDatiGiornoCorrente(datiParziali, movimentiDaSincronizzare = null) {
-        if (!stato.compagniaSelezionata || !stato.dataSelezionata) return;
-
-        const dataKey = formatDate(stato.dataSelezionata);
-        const docId = `${stato.compagniaSelezionata}_${dataKey}`;
+    async function aggiornaDatiGiornoCorrente(datiParziali, movimentiDaSincronizzare = null,
+        compagniaOverride = null, dataOverride = null) {
+        const compagniaOperazione = compagniaOverride || stato.compagniaSelezionata;
+        const dataOperazione = dataOverride ? new Date(dataOverride.getTime()) :
+            (stato.dataSelezionata ? new Date(stato.dataSelezionata.getTime()) : null);
+        if (!compagniaOperazione || !dataOperazione) return;
+        const dataKey = formatDate(dataOperazione);
+        const docId = `${compagniaOperazione}_${dataKey}`;
         const docRef = db.collection('giornaliCassa').doc(docId);
-        
-        const datiDefault = {
+        const datiDaSalvare = {
             lastModifiedBy: stato.datiUtente.displayName,
-            lastModifiedAt: firebase.firestore.FieldValue.serverTimestamp()
+            lastModifiedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            ...datiParziali,
+            dataKey,
+            compagnia: compagniaOperazione,
+            anno: dataOperazione.getFullYear(),
+            mese: dataOperazione.getMonth()
         };
-        const datiDaSalvare = { ...datiDefault, ...datiParziali };
-        
-        datiDaSalvare.dataKey = dataKey;
-        datiDaSalvare.compagnia = stato.compagniaSelezionata;
-        datiDaSalvare.anno = stato.dataSelezionata.getFullYear();
-        datiDaSalvare.mese = stato.dataSelezionata.getMonth();
-        
         try {
-            statusIndicator.textContent = 'Salvataggio...';
-            statusIndicator.className = 'saving';
-            await docRef.set(datiDaSalvare, { merge: true });
-            
+            if (stato.compagniaSelezionata === compagniaOperazione && stato.dataSelezionata &&
+                formatDate(stato.dataSelezionata) === dataKey) {
+                statusIndicator.textContent = 'Salvataggio...';
+                statusIndicator.className = 'saving';
+            }
+            await docRef.set(datiDaSalvare, {merge:true});
             if (movimentiDaSincronizzare) {
                 for (const mov of movimentiDaSincronizzare) {
-                    await gestisciMovimentiSecondari(mov, dataKey, stato.compagniaSelezionata);
+                    await gestisciMovimentiSecondari(mov, dataKey, compagniaOperazione);
                 }
             }
-
-        } catch (error) {
-            console.error("Errore durante l'aggiornamento del giorno: ", error);
-            statusIndicator.textContent = 'Errore Salvataggio';
-            statusIndicator.className = 'error';
+        } catch(error) {
+            console.error("Errore durante l'aggiornamento del giorno:", error);
+            if (stato.compagniaSelezionata === compagniaOperazione && stato.dataSelezionata &&
+                formatDate(stato.dataSelezionata) === dataKey) {
+                statusIndicator.textContent = 'Errore Salvataggio';
+                statusIndicator.className = 'error';
+            }
         }
     }
 
@@ -1842,10 +1875,11 @@ async function cancellaMovimento(index) {
         }
     }
 
-    async function calcolaRiporto(data) {
+    async function calcolaRiporto(data, compagnia = stato.compagniaSelezionata) {
+        if (!data || !compagnia) return 0;
         const giornoPrecedenteLavorativo = getGiornoPrecedenteLavorativo(data);
         const dataKeyPrec = formatDate(giornoPrecedenteLavorativo);
-        const docIdPrec = `${stato.compagniaSelezionata}_${dataKeyPrec}`;
+        const docIdPrec = `${compagnia}_${dataKeyPrec}`
         try {
             const docPrec = await db.collection('giornaliCassa').doc(docIdPrec).get();
             if (docPrec.exists) {
@@ -2060,6 +2094,7 @@ async function cancellaMovimento(index) {
     // ===============================================
     let datiTabellaCorrente = [];
     let configTabellaCorrente = {};
+    let firmaTabellaGenerica = null;
     
     const configsTabelle = {
         'anticipi': { type: 'anticipi', title: 'Gestione Anticipi', columns: { dataKey: 'Data', compagnia: 'Compagnia', nomeCliente: 'Cliente', numeroPolizza: 'Polizza', importo: 'Importo (€)', tipoAnticipo: 'Tipo Anticipo', anticipoDi: 'Anticipo di', note: 'Note', dataEstinzione: 'Data Estinzione', incassato: 'Incassato' }, formFields: { dataKey: 'date', compagnia: 'text', nomeCliente: 'text', numeroPolizza: 'text', importo: 'number', tipoAnticipo: 'text', anticipoDi: 'text', note: 'text', dataEstinzione: 'date' }, dataSource: 'anticipi', filterByDateOn: 'dataKey', searchClientOn: 'nomeCliente', editableFieldsForAutomatic: ['anticipoDi', 'note', 'dataEstinzione', 'incassato'] },
@@ -2089,8 +2124,15 @@ async function cancellaMovimento(index) {
             query = query.where('compagnia', '==', 'Vittoria');
         }
         
+        // Evita di ricostruire la tabella quando arriva la conferma
+        // di una modifica che è già stata mostrata in modo immediato.
+        firmaTabellaGenerica = null;
         unsubscribeGenericTable = query.onSnapshot(snapshot => {
-            datiTabellaCorrente = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const nuoviDati = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const nuovaFirma = JSON.stringify(nuoviDati.map(({ lastModifiedAt, lastModifiedBy, ...d }) => d));
+            datiTabellaCorrente = nuoviDati;
+            if (nuovaFirma === firmaTabellaGenerica) return;
+            firmaTabellaGenerica = nuovaFirma;
             applicaFiltriTabella();
         }, error => console.error(`Errore nel listener della tabella ${tipo}: `, error));
 
@@ -2179,33 +2221,68 @@ async function cancellaMovimento(index) {
 
     async function salvaModificaGenerica(el) {
         const cell = el.closest('td');
-        const riga = cell.closest('tr');
-        const docId = riga.dataset.id;
-        const proprieta = cell.dataset.property;
-        if (!docId) return;
+        const riga = cell && cell.closest('tr');
+        const docId = riga && riga.dataset.id;
+        const proprieta = cell && cell.dataset.property;
+        if (!docId || !proprieta || !configTabellaCorrente.dataSource) return;
+
+        // Blocca il contesto prima della scrittura asincrona.
+        const collectionName = configTabellaCorrente.dataSource;
+        const displayName = (stato.datiUtente && stato.datiUtente.displayName) || '';
+        const elemento = datiTabellaCorrente.find(d => d.id === docId);
+        if (!elemento) return;
 
         let valore;
         if (el.type === 'checkbox') {
             valore = el.checked;
         } else if (el.isContentEditable) {
-            valore = (proprieta === 'importo' || proprieta === 'abbuoni') ? (parseFloat(el.textContent) || 0) : el.textContent;
+            const testo = el.textContent.trim();
+            valore = (proprieta === 'importo' || proprieta === 'abbuoni')
+                ? (parseFloat(testo.replace(',', '.')) || 0)
+                : testo;
         } else {
             valore = el.value;
         }
-        
+
+        const valorePrecedente = elemento[proprieta] ?? '';
+        const confrontoNuovo = typeof valore === 'string' ? valore.trim() : valore;
+        const confrontoVecchio = typeof valorePrecedente === 'string' ? valorePrecedente.trim() : valorePrecedente;
+        if (confrontoNuovo === confrontoVecchio) return;
+
+        // Aggiornamento immediato della cache: il listener non deve ridisegnare
+        // tutta la tabella per la conferma della stessa modifica.
+        elemento[proprieta] = valore;
+        firmaTabellaGenerica = JSON.stringify(
+            datiTabellaCorrente.map(({ lastModifiedAt, lastModifiedBy, ...d }) => d)
+        );
+        if (el.isContentEditable && (proprieta === 'importo' || proprieta === 'abbuoni')) {
+            el.textContent = Number(valore).toFixed(2);
+        }
+        el.style.opacity = '0.65';
+
         try {
-            await db.collection(configTabellaCorrente.dataSource).doc(docId).update({
+            await db.collection(collectionName).doc(docId).update({
                 [proprieta]: valore,
-                lastModifiedBy: stato.datiUtente.displayName,
+                lastModifiedBy: displayName,
                 lastModifiedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
             mostraNotificaTemporanea('generic-modal-notification', 'Salvataggio riuscito!', 'success');
         } catch (error) {
             console.error("Errore salvataggio modifica generica: ", error);
+            elemento[proprieta] = valorePrecedente;
+            firmaTabellaGenerica = null;
+            if (el.type === 'checkbox') {
+                el.checked = !!valorePrecedente;
+            } else if (el.isContentEditable) {
+                el.textContent = valorePrecedente ?? '';
+            } else {
+                el.value = valorePrecedente ?? '';
+            }
             mostraNotificaTemporanea('generic-modal-notification', 'Errore nel salvataggio.', 'error');
+        } finally {
+            el.style.opacity = '';
         }
     }
-    
     async function cancellaMovimentoGenerico(buttonEl) {
         const riga = buttonEl.closest('tr');
         const docId = riga.dataset.id;
@@ -2641,39 +2718,61 @@ async function cancellaMovimento(index) {
     function calcolaConteggioFisico() {
         let totale = 0;
         document.querySelectorAll('#conteggioBanconote input, #conteggioMonete input').forEach(input => {
-            const subtotale = (parseFloat(input.dataset.valore) * (parseInt(input.value) || 0));
+            const quantita = Math.max(0, parseInt(input.value, 10) || 0);
+            const subtotale = (parseFloat(input.dataset.valore) || 0) * quantita;
             totale += subtotale;
-            document.getElementById(`subtotale-${input.dataset.valore.replace('.', '_')}`).textContent = `€ ${subtotale.toFixed(2)}`;
+            const target = document.getElementById(`subtotale-${input.dataset.valore.replace('.', '_')}`);
+            if (target) target.textContent = `€ ${subtotale.toFixed(2)}`;
         });
         document.querySelectorAll('.conteggio-assegno').forEach(input => {
-            totale += parseFloat(input.value) || 0;
+            const importo = Number(input.value);
+            if (Number.isFinite(importo) && importo > 0) totale += importo;
         });
-        document.getElementById('totaleConteggioFisico').textContent = totale.toFixed(2);
+        const totaleEl = document.getElementById('totaleConteggioFisico');
+        if (totaleEl) totaleEl.textContent = totale.toFixed(2);
         return totale;
     }
 
     function raccogliDatiConteggio() {
         const conteggio = { banconote: {}, monete: {}, assegni: [] };
         document.querySelectorAll('#conteggioBanconote input, #conteggioMonete input').forEach(input => {
-            if (input.value && parseInt(input.value) > 0) {
-                conteggio[input.dataset.tipo][input.dataset.valore] = parseInt(input.value);
+            const quantita = Number(input.value);
+            if (input.value !== '' && Number.isInteger(quantita) && quantita > 0) {
+                conteggio[input.dataset.tipo][input.dataset.valore] = quantita;
             }
         });
         document.querySelectorAll('.conteggio-assegno').forEach(input => {
-            if (input.value && parseFloat(input.value) > 0) {
-                conteggio.assegni.push(parseFloat(input.value));
-            }
+            const importo = Number(input.value);
+            if (input.value !== '' && Number.isFinite(importo) && importo > 0) conteggio.assegni.push(Number(importo.toFixed(2)));
         });
         return conteggio;
     }
-    
+
+    function impostaContestoCampiConteggio(compagnia, dataKey) {
+        document.querySelectorAll('#conteggioBanconote input, #conteggioMonete input, .conteggio-assegno').forEach(input => {
+            input.dataset.compagnia = compagnia || '';
+            input.dataset.dataKey = dataKey || '';
+        });
+    }
+
+    function salvaConteggioDaCampo(input) {
+        const compagnia = input?.dataset?.compagnia;
+        const dataKey = input?.dataset?.dataKey;
+        if (!compagnia || !dataKey || compagnia !== stato.compagniaSelezionata ||
+            !stato.dataSelezionata || formatDate(stato.dataSelezionata) !== dataKey) {
+            return; // evento blur tardivo: non salvare mai nel giornale appena selezionato
+        }
+        const dataOperazione = new Date(dataKey.replace(/-/g, '/'));
+        const conteggio = raccogliDatiConteggio();
+        aggiornaDatiGiornoCorrente({conteggioFisico:conteggio}, null, compagnia, dataOperazione);
+    }
+
     function creaCampiConteggio(datiConteggio = {}) {
         const divBanconote = document.getElementById('conteggioBanconote');
         const divMonete = document.getElementById('conteggioMonete');
-        
-        // Se è la prima volta (i div sono vuoti), crea la struttura, altrimenti aggiorna solo i valori
-        // Questo è il FIX per evitare che il focus si perda o i campi si resettino mentre scrivi
         const isFirstRender = divBanconote.innerHTML === '';
+        const compagnia = stato.compagniaSelezionata;
+        const dataKey = stato.dataSelezionata ? formatDate(stato.dataSelezionata) : '';
 
         if (isFirstRender) {
             divBanconote.innerHTML = '<h3>Banconote</h3>';
@@ -2683,40 +2782,32 @@ async function cancellaMovimento(index) {
         [...tagliBanconote, ...tagliMonete].forEach(taglio => {
             const tipo = taglio >= 5 ? 'banconote' : 'monete';
             const div = tipo === 'banconote' ? divBanconote : divMonete;
-            const valoreSalvato = datiConteggio?.[tipo]?.[taglio] || '';
+            const valoreSalvato = datiConteggio?.[tipo]?.[taglio] ?? '';
             const idTaglio = taglio.toString().replace('.', '_');
             const inputId = `input-conteggio-${idTaglio}`;
-            
             if (isFirstRender) {
-                // CREAZIONE HTML (Come prima)
                 const riga = document.createElement('div');
                 riga.className = 'conteggio-riga';
                 riga.innerHTML = `
                     <label for="${inputId}">€ ${taglio.toFixed(2)}</label>
-                    <input type="number" id="${inputId}" onblur="aggiornaDatiGiornoCorrente({ conteggioFisico: raccogliDatiConteggio() })" data-valore="${taglio}" data-tipo="${tipo}" value="${valoreSalvato}">
+                    <input type="number" min="0" step="1" inputmode="numeric" id="${inputId}" oninput="calcolaConteggioFisico()" onblur="salvaConteggioDaCampo(this)" data-valore="${taglio}" data-tipo="${tipo}" value="${valoreSalvato}">
                     <span id="subtotale-${idTaglio}">€ 0.00</span>
-                    <button class="btn-reset-single" onclick="azzeraCampoSingolo('${inputId}')" title="Azzera riga">×</button>
+                    <button type="button" class="btn-reset-single" onclick="azzeraCampoSingolo('${inputId}')" title="Azzera riga">×</button>
                 `;
                 div.appendChild(riga);
             } else {
-                // AGGIORNAMENTO VALORI ESISTENTI (Senza distruggere il DOM)
                 const input = document.getElementById(inputId);
-                if (input && document.activeElement !== input) {
-                     // Aggiorna solo se l'utente non ci sta scrivendo dentro in questo momento
-                     input.value = valoreSalvato;
-                }
+                if (input && document.activeElement !== input) input.value = valoreSalvato;
             }
         });
 
         const divAssegni = document.getElementById('lista-conteggio-assegni');
-        // Gli assegni sono una lista dinamica, qui li ricreiamo sempre perché è più complesso mapparli 1:1, 
-        // ma il problema principale erano i contanti/monete.
         divAssegni.innerHTML = '';
         (datiConteggio?.assegni || []).forEach(importo => aggiungiCampoAssegnoConteggio(importo));
-        
+        impostaContestoCampiConteggio(compagnia, dataKey);
         calcolaConteggioFisico();
     }
-    
+
     function azzeraCampoSingolo(inputId) {
         const input = document.getElementById(inputId);
         if (input) {
@@ -2733,18 +2824,26 @@ async function cancellaMovimento(index) {
         const div = document.createElement('div');
         div.style.display = 'flex'; div.style.gap = '5px'; div.style.marginBottom = '5px';
         div.innerHTML = `
-            <input type="number" step="0.01" class="conteggio-assegno" placeholder="Importo" value="${importo}" onblur="aggiornaDatiGiornoCorrente({ conteggioFisico: raccogliDatiConteggio() })">
-            <button type="button" class="button-delete" style="width:auto;" onclick="this.parentElement.remove(); aggiornaDatiGiornoCorrente({ conteggioFisico: raccogliDatiConteggio() });">X</button>`;
+            <input type="number" min="0" step="0.01" inputmode="decimal" class="conteggio-assegno" placeholder="Importo" value="${importo}" oninput="calcolaConteggioFisico()" onblur="salvaConteggioDaCampo(this)">
+            <button type="button" class="button-delete" style="width:auto;" onclick="this.parentElement.remove(); salvaConteggioDaCampo(this.previousElementSibling);">X</button>`;
         divAssegni.appendChild(div);
+        const input = div.querySelector('.conteggio-assegno');
+        if (input) {
+            input.dataset.compagnia = stato.compagniaSelezionata || '';
+            input.dataset.dataKey = stato.dataSelezionata ? formatDate(stato.dataSelezionata) : '';
+        }
     }
 
     function azzeraConteggio() {
+        if (!stato.compagniaSelezionata || !stato.dataSelezionata) return;
         if (confirm('Sei sicuro di voler azzerare tutto il conteggio fisico?')) {
-            document.querySelectorAll('#box-conteggio-cassa input[type="number"]').forEach(input => {
-                input.value = '';
-            });
+            const compagnia = stato.compagniaSelezionata;
+            const data = new Date(stato.dataSelezionata.getTime());
+            document.querySelectorAll('#box-conteggio-cassa input[type="number"]').forEach(input => input.value = '');
             document.getElementById('lista-conteggio-assegni').innerHTML = '';
-            aggiornaDatiGiornoCorrente({ conteggioFisico: {} });
+            impostaContestoCampiConteggio(compagnia, formatDate(data));
+            aggiornaDatiGiornoCorrente({conteggioFisico:{banconote:{},monete:{},assegni:[]}}, null, compagnia, data);
+            calcolaConteggioFisico();
         }
     }
     
@@ -2762,13 +2861,16 @@ async function cancellaMovimento(index) {
     }
     
     async function toggleRiportoMode(isManual) {
+        const compagnia = stato.compagniaSelezionata;
+        const data = stato.dataSelezionata ? new Date(stato.dataSelezionata.getTime()) : null;
+        if (!compagnia || !data) return;
         document.getElementById('riportoIniziale').readOnly = !isManual;
         document.getElementById('riporto-mode-label').textContent = isManual ? 'Riporto Manuale' : 'Riporto Automatico';
-        const update = { riportoIsManual: isManual };
-        if (!isManual) {
-            update.riportoIniziale = await calcolaRiporto(stato.dataSelezionata);
-        }
-        await aggiornaDatiGiornoCorrente(update);
+        const update = {riportoIsManual:isManual};
+        if (!isManual) update.riportoIniziale = await calcolaRiporto(data, compagnia);
+        if (compagnia !== stato.compagniaSelezionata || !stato.dataSelezionata ||
+            formatDate(stato.dataSelezionata) !== formatDate(data)) return;
+        await aggiornaDatiGiornoCorrente(update, null, compagnia, data);
     }
     
     function impostaStatoGiornata(isFestivo) {
