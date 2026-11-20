@@ -870,6 +870,7 @@ tbody tr:hover { background-color: rgba(0,0,0,0.02); }
                 </div>
                 <div class="action-group">
                     <button class="button-save" onclick="apriFormAggiunta()"><i class="fa fa-plus"></i> Aggiungi Nuovo</button>
+                    <button id="btn-stampa-anticipi-selezionati" class="button-secondary" onclick="stampaAnticipiSelezionati()" style="display:none; background:#17a2b8;"><i class="fas fa-print"></i> Stampa selezionati (<span id="conteggio-anticipi-selezionati">0</span>)</button>
                     <button class="button-secondary" onclick="chiudiGenericModal()">Chiudi</button>
                 </div>
              </div>
@@ -2137,6 +2138,7 @@ async function cancellaMovimento(index) {
         }, error => console.error(`Errore nel listener della tabella ${tipo}: `, error));
 
         document.getElementById('generic-modal-title').textContent = configTabellaCorrente.title;
+        const btnStampaAnticipi = document.getElementById('btn-stampa-anticipi-selezionati'); if (btnStampaAnticipi) btnStampaAnticipi.style.display = tipo === 'anticipi' ? 'inline-block' : 'none';
         popolaFiltri(datiTabellaCorrente);
         document.getElementById('generic-modal').style.display = 'flex';
     }
@@ -2161,6 +2163,10 @@ async function cancellaMovimento(index) {
         const editableForAuto = configTabellaCorrente.editableFieldsForAutomatic || [];
         
         headerRow.insertCell().outerHTML = `<th class="col-origine">Origine</th>`;
+        if (configTabellaCorrente.dataSource === 'anticipi') {
+            const thSelect = document.createElement('th'); thSelect.style.width = '42px'; thSelect.innerHTML = '<input type=\"checkbox\" id=\"select-all-anticipi\" title=\"Seleziona tutti gli anticipi visibili\" onchange=\"selezionaTuttiAnticipiVisibili(this.checked)\" style=\"width:auto; margin:0;\">';
+            headerRow.appendChild(thSelect);
+        }
         for (const key in configTabellaCorrente.columns) {
             const th = document.createElement('th');
             th.textContent = configTabellaCorrente.columns[key];
@@ -2185,6 +2191,10 @@ async function cancellaMovimento(index) {
                 ? `<i class="fas fa-sync-alt" title="Origine: Giornale Cassa"></i>` 
                 : `<i class="fas fa-pencil-alt" title="Origine: Manuale"></i>`;
 
+            if (configTabellaCorrente.dataSource === 'anticipi') {
+                const cellSelect = riga.insertCell(); cellSelect.dataset.label = 'Seleziona'; cellSelect.style.textAlign = 'center';
+                cellSelect.innerHTML = `<input type=\"checkbox\" class=\"checkbox-anticipo-stampa\" data-id=\"${d.id}\" onchange=\"aggiornaConteggioAnticipiSelezionati()\" style=\"width:auto; margin:0;\">`;
+            }
             for (const key in configTabellaCorrente.columns) {
                 const cell = riga.insertCell();
                 cell.dataset.property = key;
@@ -2217,6 +2227,48 @@ async function cancellaMovimento(index) {
             
             aggiornaStileRiga(riga, d);
         });
+    }
+
+    function aggiornaConteggioAnticipiSelezionati() {
+        const checks = document.querySelectorAll('#generic-table .checkbox-anticipo-stampa:checked');
+        const btn = document.getElementById('btn-stampa-anticipi-selezionati');
+        const count = document.getElementById('conteggio-anticipi-selezionati');
+        if (count) count.textContent = checks.length;
+        if (btn) btn.style.display = configTabellaCorrente?.dataSource === 'anticipi' ? 'inline-block' : 'none';
+        const selectAll = document.getElementById('select-all-anticipi');
+        if (selectAll) {
+            const all = document.querySelectorAll('#generic-table .checkbox-anticipo-stampa');
+            selectAll.checked = all.length > 0 && checks.length === all.length;
+            selectAll.indeterminate = checks.length > 0 && checks.length < all.length;
+        }
+    }
+
+    function selezionaTuttiAnticipiVisibili(checked) {
+        document.querySelectorAll('#generic-table .checkbox-anticipo-stampa').forEach(cb => cb.checked = checked);
+        aggiornaConteggioAnticipiSelezionati();
+    }
+
+    function stampaAnticipiSelezionati() {
+        if (configTabellaCorrente?.dataSource !== 'anticipi') return;
+        const ids = Array.from(document.querySelectorAll('#generic-table .checkbox-anticipo-stampa:checked')).map(cb => cb.dataset.id);
+        if (!ids.length) { alert('Seleziona almeno un anticipo da stampare.'); return; }
+        const selezionati = datiTabellaCorrente.filter(d => ids.includes(d.id));
+        const totale = selezionati.reduce((sum, a) => sum + (parseFloat(a.importo) || 0), 0);
+        const fmt = n => Number(n || 0).toLocaleString('it-IT', {style:'currency', currency:'EUR'});
+        const dateFmt = d => d ? new Date(String(d).replace(/-/g,'/')).toLocaleDateString('it-IT') : '-';
+        const printLayout = document.getElementById('print-layout');
+        const righe = selezionati.sort((a,b) => String(a.dataKey||'').localeCompare(String(b.dataKey||''))).map(a => `<tr>
+            <td>${dateFmt(a.dataKey)}</td><td>${a.compagnia||'-'}</td><td>${a.nomeCliente||'-'}</td><td>${a.numeroPolizza||'-'}</td>
+            <td>${a.tipoAnticipo||'-'}</td><td>${a.anticipoDi||'-'}</td><td>${a.note||'-'}</td><td style="text-align:right">${fmt(a.importo)}</td>
+        </tr>`).join('');
+        printLayout.innerHTML = `<div class="print-page" style="font-family:Arial,sans-serif;color:#111;">
+          <div class="print-header"><h1>RIEPILOGO ANTICIPI SELEZIONATI</h1><h2>${new Date().toLocaleDateString('it-IT')}</h2></div>
+          <p><strong>Numero anticipi:</strong> ${selezionati.length}</p>
+          <table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>
+          <th style="border:1px solid #777;padding:7px">Data</th><th style="border:1px solid #777;padding:7px">Compagnia</th><th style="border:1px solid #777;padding:7px">Cliente</th><th style="border:1px solid #777;padding:7px">Polizza</th><th style="border:1px solid #777;padding:7px">Tipo</th><th style="border:1px solid #777;padding:7px">Anticipo di</th><th style="border:1px solid #777;padding:7px">Note</th><th style="border:1px solid #777;padding:7px">Importo</th></tr></thead><tbody>${righe}</tbody></table>
+          <div style="margin-top:20px;padding:14px;border:2px solid #333;text-align:right;font-size:18px;font-weight:bold">TOTALE COMPLESSIVO: ${fmt(totale)}</div>
+        </div>`;
+        window.print();
     }
 
     async function salvaModificaGenerica(el) {
